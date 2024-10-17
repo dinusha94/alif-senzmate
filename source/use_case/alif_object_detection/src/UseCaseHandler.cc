@@ -28,7 +28,7 @@
  */
 #include "UseCaseHandler.hpp"
 #include "YoloFastestModel.hpp"
-#include "MobileFacenet.hpp"
+#include "MobileNetModel.hpp"
 #include "UseCaseCommonUtils.hpp"
 #include "DetectorPostProcessing.hpp"
 #include "DetectorPreProcessing.hpp"
@@ -56,7 +56,6 @@ using arm::app::Profiler;
 using arm::app::ApplicationContext;
 using arm::app::Model;
 using arm::app::YoloFastestModel;
-using arm::app::MobileFacenet; //
 using arm::app::DetectorPreProcess;
 using arm::app::DetectorPostProcess;
 
@@ -65,11 +64,6 @@ namespace app {
 
 namespace object_detection {
 using namespace arm::app::object_detection;
-
-}
-
-namespace object_recognition{
-using namespace arm::app::object_recognition;
 
 }
 
@@ -130,7 +124,62 @@ using namespace arm::app::object_recognition;
             return false;
         }
 
+        TfLiteTensor* inputTensor = model.GetInputTensor(0);
+        TfLiteTensor* outputTensor = model.GetOutputTensor(0);
+
+        if (!inputTensor->dims) {
+            printf_err("Invalid input tensor dims\n");
+            return false;
+        } else if (inputTensor->dims->size < 4) {
+            printf_err("Input tensor dimension should be = 4\n");
+            return false;
+        }
+
+        /* Get input shape for displaying the image. */
+        TfLiteIntArray* inputShape = model.GetInputShape(0);
+        // const uint32_t nCols       = inputShape->data[arm::app::MobileNetModel::ms_inputColsIdx];
+        // const uint32_t nRows       = inputShape->data[arm::app::MobileNetModel::ms_inputRowsIdx];
+
+        /* Set up pre and post-processing. */
+        ImgClassPreProcess preProcess = ImgClassPreProcess(inputTensor, model.IsDataSigned());
+
+        std::vector<ClassificationResult> results;
+        ImgClassPostProcess postProcess = ImgClassPostProcess(outputTensor,
+                ctx.Get<ImgClassClassifier&>("classifier"), ctx.Get<std::vector<std::string>&>("labels"),
+                results);
+
+        const uint8_t *image_data = hal_get_image_data(nCols, nRows);
+        if (!image_data) {
+            printf_err("hal_get_image_data failed");
+            return false;
+        }
+
+        /* Run the pre-processing, inference and post-processing. */
+        if (!preProcess.DoPreProcess(image_data, imgSz)) {
+            printf_err("Pre-processing failed.");
+            return false;
+        }
+
+        if (!RunInference(model, profiler)) {
+            printf_err("Inference failed.");
+            return false;
+        }
+
+        if (!postProcess.DoPostProcess()) {
+            printf_err("Post-processing failed.");
+            return false;
+        }
+
+        /* Add results to context for access outside handler. */
+        ctx.Set<std::vector<ClassificationResult>>("results", results);
+
+        profiler.PrintProfilingResult();
+
     }
+
+
+
+
 
     /* Object detection inference handler. */
     bool ObjectDetectionHandler(ApplicationContext& ctx)

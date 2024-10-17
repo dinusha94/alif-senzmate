@@ -15,4 +15,4 @@ make ethos-u-alif_kws -j
 sudo ./app-write-mram -p
 
 cd /home/dinusha/alif_ml-embedded-evaluation-kit/resources_downloaded/our_models
-vela --accelerator-config=ethos-u55-256 --optimise Performance --config /home/dinusha/alif_ml-embedded-evaluation-kit/scripts/vela/ensemble_vela.ini --memory-mode=Shared_Sram --system-config=Ethos_U55_High_End_Embedded --output-dir=. mobilefacenet.tflite
+vela --accelerator-config=ethos-u55-256 --optimise Performance --config /home/dinusha/alif_ml-embedded-evaluation-kit/scripts/vela/default_vela.ini --memory-mode=Shared_Sram --system-config=Ethos_U55_High_End_Embedded --output-dir=. mobilenet_v2_1.0_112_quant.tflite

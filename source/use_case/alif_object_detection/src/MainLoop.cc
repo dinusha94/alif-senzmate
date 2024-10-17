@@ -30,7 +30,6 @@
 #include "InputFiles.hpp"             /* For input images. */
 
 #include "YoloFastestModel.hpp"       /* Model class for running inference. */
-#include "MobileFacenet.hpp"
 #include "MobileNetModel.hpp"
 
 #include "UseCaseHandler.hpp"         /* Handlers for different user options. */
@@ -59,6 +58,7 @@ namespace app {
 } /* namespace app */
 } /* namespace arm */
 
+/* callback function to handle name strings received from speech recognition process*/
 void user_message_callback(char *message)
 {
     info("Message received in user callback: %s\n", message);
@@ -71,8 +71,7 @@ void main_loop()
 
 
     arm::app::YoloFastestModel model;  /* Model wrapper object. */
-    arm::app::MobileFacenet recog_model;  
-    // arm::app::MobileNetModel class_model;
+    arm::app::MobileNetModel recog_model;
 
     if (!alif::app::ObjectDetectionInit()) {
         printf_err("Failed to initialise use case handler\n");
@@ -110,7 +109,7 @@ void main_loop()
     arm::app::Profiler profiler{"object_detection"};
     caseContext.Set<arm::app::Profiler&>("profiler", profiler);
     caseContext.Set<arm::app::Model&>("model", model);
-    // caseContext.Set<arm::app::Model&>("recog_model", recog_model);
+    caseContext.Set<arm::app::Model&>("recog_model", recog_model);
 
     /* Loop. */
     do {

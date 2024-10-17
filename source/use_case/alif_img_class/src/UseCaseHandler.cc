@@ -38,7 +38,6 @@
 #include "log_macros.h"
 #include "ImgClassProcessing.hpp"
 
-
 #include <cinttypes>
 
 #include "lvgl.h"
@@ -72,6 +71,36 @@ namespace {
 
 lv_color_t  lvgl_image[LIMAGE_Y][LIMAGE_X] __attribute__((section(".bss.lcd_image_buf")));                      // 448x448x4 = 802,856
 };
+
+/* Print the output tensor from the model */
+void PrintTfLiteTensor(TfLiteTensor* tensor) {
+    if (tensor == nullptr) {
+        info("Tensor is null \n");
+        return;
+    }
+
+    // Check if the tensor is of type int8
+    if (tensor->type != kTfLiteInt8) {
+        info("Tensor is not of type int8! Got type: %d\n", tensor->type);
+        return;
+    }
+
+    // Get the number of elements in the tensor
+    int numElements = 1;
+    for (int i = 0; i < tensor->dims->size; ++i) {
+        numElements *= tensor->dims->data[i];
+    }
+
+    // Cast the tensor's data pointer to int8
+    int8_t* data = tensor->data.int8;
+
+    // Print the tensor data
+    info("Tensor contents: \n");
+    for (int i = 0; i < numElements; ++i) {
+        info("Element %d: %d\n", i, data[i]);  // %d is for printing int8 values
+    }
+}
+
 
 namespace alif {
 namespace app {
@@ -114,6 +143,7 @@ namespace app {
 
         TfLiteTensor* inputTensor = model.GetInputTensor(0);
         TfLiteTensor* outputTensor = model.GetOutputTensor(0);
+
         if (!inputTensor->dims) {
             printf_err("Invalid input tensor dims\n");
             return false;
@@ -182,58 +212,69 @@ namespace app {
 #if !SKIP_MODEL
         const size_t imgSz = inputTensor->bytes;
 
-#if SHOW_INF_TIME
-        uint32_t inf_prof = Get_SysTick_Cycle_Count32();
-#endif
+// #if SHOW_INF_TIME
+//         uint32_t inf_prof = Get_SysTick_Cycle_Count32();
+// #endif
 
         /* Run the pre-processing, inference and post-processing. */
         if (!preProcess.DoPreProcess(image_data, imgSz)) {
             printf_err("Pre-processing failed.");
             return false;
         }
+        
+        info("Inferencing IN \n");
+        // PrintTfLiteTensor(inputTensor);
 
         if (!RunInference(model, profiler)) {
             printf_err("Inference failed.");
             return false;
         }
 
-        if (!postProcess.DoPostProcess()) {
-            printf_err("Post-processing failed.");
-            return false;
-        }
+        info("Inferencing out \n");
 
-#if SHOW_INF_TIME
-        inf_prof = Get_SysTick_Cycle_Count32() - inf_prof;
-#endif
+        // if (!postProcess.DoPostProcess()) {
+        //     printf_err("Post-processing failed.");
+        //     return false;
+        // }
+
+        // PrintTfLiteTensor(outputTensor);
+
+// #if SHOW_INF_TIME
+//         inf_prof = Get_SysTick_Cycle_Count32() - inf_prof;
+// #endif
 
         /* Add results to context for access outside handler. */
-        ctx.Set<std::vector<ClassificationResult>>("results", results);
+        // ctx.Set<std::vector<ClassificationResult>>("feature_vector", outputTensor);
+        ctx.Set<TfLiteTensor*>("int8_feature_vector", outputTensor);
+        /* Access it later */
+        // TfLiteTensor* savedOutputTensor = ctx.Get<TfLiteTensor*>("outputTensor");
 
-        lv_lock_state = lv_port_lock();
-        for (int r = 0; r < 3; r++) {
-            lv_obj_t *label = ScreenLayoutLabelObject(r);
-            lv_label_set_text_fmt(label, "%s (%d%%)", first_bit(results[r].m_label).c_str(), (int)(results[r].m_normalisedVal * 100));
-            if (results[r].m_normalisedVal >= 0.7) {
-                lv_obj_add_state(label, LV_STATE_USER_1);
-            } else {
-                lv_obj_clear_state(label, LV_STATE_USER_1);
-            }
-            if (results[r].m_normalisedVal < 0.2) {
-                lv_obj_add_state(label, LV_STATE_USER_2);
-            } else {
-                lv_obj_clear_state(label, LV_STATE_USER_2);
-            }
-        }
 
-#if SHOW_INF_TIME
-        lv_label_set_text_fmt(ScreenLayoutHeaderObject(), "%s - %.2f FPS", "Image Classifier", (double) SystemCoreClock / inf_prof);
-        lv_label_set_text_fmt(ScreenLayoutTimeObject(), "%.3f ms", (double)inf_prof / SystemCoreClock * 1000);
-#endif
-        lv_port_unlock(lv_lock_state);
+//         lv_lock_state = lv_port_lock();
+//         for (int r = 0; r < 3; r++) {
+//             lv_obj_t *label = ScreenLayoutLabelObject(r);
+//             lv_label_set_text_fmt(label, "%s (%d%%)", first_bit(results[r].m_label).c_str(), (int)(results[r].m_normalisedVal * 100));
+//             if (results[r].m_normalisedVal >= 0.7) {
+//                 lv_obj_add_state(label, LV_STATE_USER_1);
+//             } else {
+//                 lv_obj_clear_state(label, LV_STATE_USER_1);
+//             }
+//             if (results[r].m_normalisedVal < 0.2) {
+//                 lv_obj_add_state(label, LV_STATE_USER_2);
+//             } else {
+//                 lv_obj_clear_state(label, LV_STATE_USER_2);
+//             }
+//         }
 
-        if (!PresentInferenceResult(results)) {
-            return false;
-        }
+// #if SHOW_INF_TIME
+//         lv_label_set_text_fmt(ScreenLayoutHeaderObject(), "%s - %.2f FPS", "Image Classifier", (double) SystemCoreClock / inf_prof);
+//         lv_label_set_text_fmt(ScreenLayoutTimeObject(), "%.3f ms", (double)inf_prof / SystemCoreClock * 1000);
+// #endif
+//         lv_port_unlock(lv_lock_state);
+
+        // if (!PresentInferenceResult(results)) {
+        //     return false;
+        // }
 
         profiler.PrintProfilingResult();
 #endif

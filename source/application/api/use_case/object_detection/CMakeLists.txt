@@ -29,7 +29,6 @@ add_library(${OBJECT_DETECTION_API_TARGET} STATIC
         src/DetectorPreProcessing.cc
         src/DetectorPostProcessing.cc
         src/YoloFastestModel.cc
-        src/MobileFacenet.cc
         src/MobileNetModel.cc)
 
 target_include_directories(${OBJECT_DETECTION_API_TARGET} PUBLIC include)
