@@ -27,8 +27,8 @@
  * limitations under the License.
  */
 #include "UseCaseHandler.hpp"
+
 #include "YoloFastestModel.hpp"
-#include "MobileNetModel.hpp"
 #include "UseCaseCommonUtils.hpp"
 #include "DetectorPostProcessing.hpp"
 #include "DetectorPreProcessing.hpp"
@@ -38,10 +38,22 @@
 
 #include <cinttypes>
 #include <cmath>
+#include <vector>
+#include <cstdint>
+#include <cstring>
 
 #include "lvgl.h"
 #include "lv_port.h"
 #include "lv_paint_utils.h"
+
+#include "Classifier.hpp"
+#include "MobileNetModel.hpp"
+#include "ImageUtils.hpp"
+#include "ImgClassProcessing.hpp"
+
+
+#define MIMAGE_X 224
+#define MIMAGE_Y 224
 
 #define LIMAGE_X        192
 #define LIMAGE_Y        192
@@ -58,6 +70,7 @@ using arm::app::Model;
 using arm::app::YoloFastestModel;
 using arm::app::DetectorPreProcess;
 using arm::app::DetectorPostProcess;
+using arm::app::ImgClassPreProcess; 
 
 namespace alif {
 namespace app {
@@ -66,6 +79,92 @@ namespace object_detection {
 using namespace arm::app::object_detection;
 
 }
+
+    /* Print the output tensor from the model */
+    void PrintTfLiteTensor(TfLiteTensor* tensor) {
+        if (tensor == nullptr) {
+            info("Tensor is null \n");
+            return;
+        }
+
+        // Check if the tensor is of type int8
+        if (tensor->type != kTfLiteInt8) {
+            info("Tensor is not of type int8! Got type: %d\n", tensor->type);
+            return;
+        }
+
+        // Get the number of elements in the tensor
+        int numElements = 1;
+        for (int i = 0; i < tensor->dims->size; ++i) {
+            numElements *= tensor->dims->data[i];
+        }
+
+        // Cast the tensor's data pointer to int8
+        int8_t* data = tensor->data.int8;
+
+        // Print the tensor data
+        info("Tensor contents: \n");
+        for (int i = 0; i < numElements; ++i) {
+            info("Element %d: %d\n", i, data[i]);  // %d is for printing int8 values
+        }
+    }
+
+    
+
+    // A helper function to crop the image based on the detection box.
+    bool CropDetectedObject(const uint8_t* currImage, int inputImgCols, int inputImgRows, const object_detection::DetectionResult& result, uint8_t* croppedImage) {
+        // Ensure the bounding box coordinates are within the image dimensions
+        int x0 = result.m_x0;
+        int y0 = result.m_y0;
+        int w = result.m_w;
+        int h = result.m_h;
+
+        if (x0 < 0 || y0 < 0 || (x0 + w) > inputImgCols || (y0 + h) > inputImgRows) {
+            printf_err("Invalid detection box coordinates for cropping.\n");
+            return false;
+        }
+
+        // Crop the image by copying pixels from the detected region
+        for (int y = 0; y < h; ++y) {
+            int sourceOffset = ((y0 + y) * inputImgCols + x0) * 3; // Assuming 3 channels (RGB) per pixel
+            int destOffset = (y * w) * 3;
+
+            // Copy the row of the detection box from the original image to the cropped image
+            std::memcpy(&croppedImage[destOffset], &currImage[sourceOffset], w * 3);
+        }
+
+        return true;
+    }
+
+    // This is the function that processes all detection results and crops the corresponding regions.
+    bool ProcessDetectionsAndCrop(const uint8_t* currImage, int inputImgCols, int inputImgRows, const std::vector<object_detection::DetectionResult>& results) {
+        for (const auto& result : results) {
+            // Calculate size of the cropped image based on the detection box dimensions
+            int croppedWidth = result.m_w;
+            int croppedHeight = result.m_h;
+
+            // Allocate memory for the cropped image (assuming RGB format, hence *3 for channels)
+            uint8_t* croppedImage = new uint8_t[croppedWidth * croppedHeight * 3];
+
+            // Crop the detected object from the current image
+            if (CropDetectedObject(currImage, inputImgCols, inputImgRows, result, croppedImage)) {
+                // Handle the cropped image (display, save, further processing, etc.)
+                info("Cropped object detected at {x=%d, y=%d, w=%d, h=%d}\n", result.m_x0, result.m_y0, result.m_w, result.m_h);
+
+                // Save or process the cropped image here
+                // SaveCroppedImageToFile(croppedImage, croppedWidth, croppedHeight);
+            } else {
+                info("Failed to crop detected object at {x=%d, y=%d, w=%d, h=%d}\n", result.m_x0, result.m_y0, result.m_w, result.m_h);
+            }
+
+            // Free the memory for the cropped image after usage
+            delete[] croppedImage;
+        }
+
+        return true;
+    }
+
+
 
     bool ObjectDetectionInit()
     {
@@ -95,6 +194,22 @@ using namespace arm::app::object_detection;
         return true;
     }
 
+    bool ClassifyImageInit()
+    {
+        ScreenLayoutInit(lvgl_image, sizeof lvgl_image, LIMAGE_X, LIMAGE_Y, LV_ZOOM);
+        uint32_t lv_lock_state = lv_port_lock();
+        lv_label_set_text_static(ScreenLayoutHeaderObject(), "Image Classifier");
+        lv_port_unlock(lv_lock_state);
+
+        /* Initialise the camera */
+        int err = hal_image_init();
+        if (0 != err) {
+            printf_err("hal_image_init failed with error: %d\n", err);
+        }
+
+        return true;
+    }
+
 
     /**
      * @brief           Presents inference results along using the data presentation
@@ -112,8 +227,14 @@ using namespace arm::app::object_detection;
            const std::vector<object_detection::DetectionResult>& results,
            int imgInputCols, int imgInputRows);
     
-    /* Object recognition inference handler */
-    bool ObjectRecognitionHandler(ApplicationContext& ctx)
+
+
+
+
+
+    /* TODO: Face recognition inference handler (ClassifyImageHandler from alif_img_class) */
+ 
+bool ClassifyImageHandler(ApplicationContext& ctx)
     {
 
         auto& profiler = ctx.Get<Profiler&>("profiler");
@@ -136,17 +257,16 @@ using namespace arm::app::object_detection;
         }
 
         /* Get input shape for displaying the image. */
-        TfLiteIntArray* inputShape = model.GetInputShape(0);
+        // TfLiteIntArray* inputShape = model.GetInputShape(0);
         // const uint32_t nCols       = inputShape->data[arm::app::MobileNetModel::ms_inputColsIdx];
         // const uint32_t nRows       = inputShape->data[arm::app::MobileNetModel::ms_inputRowsIdx];
 
         /* Set up pre and post-processing. */
         ImgClassPreProcess preProcess = ImgClassPreProcess(inputTensor, model.IsDataSigned());
 
-        std::vector<ClassificationResult> results;
-        ImgClassPostProcess postProcess = ImgClassPostProcess(outputTensor,
-                ctx.Get<ImgClassClassifier&>("classifier"), ctx.Get<std::vector<std::string>&>("labels"),
-                results);
+
+        const uint32_t nCols       = MIMAGE_X;
+        const uint32_t nRows       = MIMAGE_Y;
 
         const uint8_t *image_data = hal_get_image_data(nCols, nRows);
         if (!image_data) {
@@ -154,30 +274,36 @@ using namespace arm::app::object_detection;
             return false;
         }
 
+
+        const size_t imgSz = inputTensor->bytes;
+
+
         /* Run the pre-processing, inference and post-processing. */
         if (!preProcess.DoPreProcess(image_data, imgSz)) {
             printf_err("Pre-processing failed.");
             return false;
         }
+        
+        info("Inferencing IN \n");
+        // PrintTfLiteTensor(inputTensor);
 
         if (!RunInference(model, profiler)) {
             printf_err("Inference failed.");
             return false;
         }
 
-        if (!postProcess.DoPostProcess()) {
-            printf_err("Post-processing failed.");
-            return false;
-        }
+        info("Inferencing out \n");
+        // PrintTfLiteTensor(outputTensor);
 
         /* Add results to context for access outside handler. */
-        ctx.Set<std::vector<ClassificationResult>>("results", results);
+        ctx.Set<TfLiteTensor*>("int8_feature_vector", outputTensor);
+        /* Access it later */
+        // TfLiteTensor* savedOutputTensor = ctx.Get<TfLiteTensor*>("outputTensor");
 
         profiler.PrintProfilingResult();
 
+        return true;
     }
-
-
 
 
 
@@ -268,6 +394,12 @@ using namespace arm::app::object_detection;
                 return false;
             }
 
+
+            // if (!ProcessDetectionsAndCrop(currImage, inputImgCols, inputImgRows, results)){
+            //     printf_err("Cropping failed.");
+            //     return false;
+            // }
+
 #if SHOW_INF_TIME
             inf_prof = Get_SysTick_Cycle_Count32() - inf_prof;
             lv_label_set_text_fmt(ScreenLayoutLabelObject(2), "Inference time: %.3f ms", (double)inf_prof / SystemCoreClock * 1000);
@@ -295,6 +427,13 @@ using namespace arm::app::object_detection;
 
         return true;
     }
+
+
+
+
+
+
+
 
     static bool PresentInferenceResult(const std::vector<object_detection::DetectionResult>& results)
     {

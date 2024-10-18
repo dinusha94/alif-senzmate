@@ -29,11 +29,20 @@ add_library(${OBJECT_DETECTION_API_TARGET} STATIC
         src/DetectorPreProcessing.cc
         src/DetectorPostProcessing.cc
         src/YoloFastestModel.cc
-        src/MobileNetModel.cc)
+        src/MobileNetModel.cc
+        src/ImgClassProcessing.cc)
+
+# set(IMG_CLASS_API_TARGET img_class_api)  # Declare the target name
+# add_library(${IMG_CLASS_API_TARGET} STATIC
+#         ../img_class/src/ImgClassProcessing.cc
+#         ../img_class/src/MobileNetModel.cc)
 
 target_include_directories(${OBJECT_DETECTION_API_TARGET} PUBLIC include)
+# target_include_directories(${OBJECT_DETECTION_API_TARGET} PUBLIC ../img_class/include)
+# target_include_directories(${IMG_CLASS_API_TARGET} PUBLIC ../img_class/include)
 
 target_link_libraries(${OBJECT_DETECTION_API_TARGET} PUBLIC common_api)
+# target_link_libraries(${IMG_CLASS_API_TARGET} PUBLIC common_api)
 
 message(STATUS "*******************************************************")
 message(STATUS "Library                                : " ${OBJECT_DETECTION_API_TARGET})

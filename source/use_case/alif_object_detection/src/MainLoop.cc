@@ -28,33 +28,30 @@
  */
 #include "hal.h"                      /* Brings in platform definitions. */
 #include "InputFiles.hpp"             /* For input images. */
-
 #include "YoloFastestModel.hpp"       /* Model class for running inference. */
-#include "MobileNetModel.hpp"
-
 #include "UseCaseHandler.hpp"         /* Handlers for different user options. */
 #include "UseCaseCommonUtils.hpp"     /* Utils functions. */
 #include "log_macros.h"             /* Logging functions */
 #include "BufAttributes.hpp"        /* Buffer attributes to be applied */
 
+#include "MobileNetModel.hpp"       /* Model class for running inference. */
+
+
+
+
 namespace arm {
 namespace app {
-    static uint8_t tensorArena[ACTIVATION_BUF_SZ] ACTIVATION_BUF_ATTRIBUTE;
+    
     namespace object_detection {
         extern uint8_t* GetModelPointer();
         extern size_t GetModelLen();
     } /* namespace object_detection */
 
-    namespace object_recognition{
+    namespace img_class{
         extern uint8_t* GetModelPointer();
         extern size_t GetModelLen();
     } // namespace object_recognition
-
-    namespace img_class {
-        extern uint8_t* GetModelPointer();
-        extern size_t GetModelLen();
-    } /* namespace img_class */
-    
+    static uint8_t tensorArena[ACTIVATION_BUF_SZ] ACTIVATION_BUF_ATTRIBUTE;
 } /* namespace app */
 } /* namespace arm */
 
@@ -66,19 +63,19 @@ void user_message_callback(char *message)
 
 void main_loop()
 {
-    // init_trigger_rx();
-    init_trigger_tx_custom(user_message_callback);
+    init_trigger_rx();
+    // init_trigger_tx_custom(user_message_callback);
 
 
-    arm::app::YoloFastestModel model;  /* Model wrapper object. */
+    arm::app::YoloFastestModel det_model;  /* Model wrapper object. */
     arm::app::MobileNetModel recog_model;
-
+    
     if (!alif::app::ObjectDetectionInit()) {
         printf_err("Failed to initialise use case handler\n");
     }
 
     /* Load the detection model. */
-    if (!model.Init(arm::app::tensorArena,
+    if (!det_model.Init(arm::app::tensorArena,
                     sizeof(arm::app::tensorArena),
                     arm::app::object_detection::GetModelPointer(),
                     arm::app::object_detection::GetModelLen())) {
@@ -86,29 +83,25 @@ void main_loop()
         return;
     }
 
+
     /* Load the recognition model. */
     if (!recog_model.Init(arm::app::tensorArena,
                     sizeof(arm::app::tensorArena),
-                    arm::app::object_recognition::GetModelPointer(),
-                    arm::app::object_recognition::GetModelLen())) {
+                    arm::app::img_class::GetModelPointer(),
+                    arm::app::img_class::GetModelLen(),
+                    det_model.GetAllocator())) {
         printf_err("Failed to initialise recognition model\n");
         return;
     }
 
-    // if (!model.Init(arm::app::tensorArena,
-    //                 sizeof(arm::app::tensorArena),
-    //                 arm::app::img_class::GetModelPointer(),
-    //                 arm::app::img_class::GetModelLen())) {
-    //     printf_err("Failed to initialise model\n");
-    //     return;
-    //                 }
 
     /* Instantiate application context. */
     arm::app::ApplicationContext caseContext;
 
     arm::app::Profiler profiler{"object_detection"};
+    // arm::app::Profiler profiler{"img_class"};
     caseContext.Set<arm::app::Profiler&>("profiler", profiler);
-    caseContext.Set<arm::app::Model&>("model", model);
+    caseContext.Set<arm::app::Model&>("model", det_model);
     caseContext.Set<arm::app::Model&>("recog_model", recog_model);
 
     /* Loop. */
