@@ -35,7 +35,7 @@
 #include "BufAttributes.hpp"        /* Buffer attributes to be applied */
 
 #include "MobileNetModel.hpp"       /* Model class for running inference. */
-
+#include "FaceEmbedding.hpp" 
 
 
 
@@ -70,6 +70,7 @@ void main_loop()
     arm::app::YoloFastestModel det_model;  /* Model wrapper object. */
     arm::app::MobileNetModel recog_model;
     
+    /* No need to initiate Classification since we use single camera*/
     if (!alif::app::ObjectDetectionInit()) {
         printf_err("Failed to initialise use case handler\n");
     }
@@ -85,14 +86,14 @@ void main_loop()
 
 
     /* Load the recognition model. */
-    if (!recog_model.Init(arm::app::tensorArena,
-                    sizeof(arm::app::tensorArena),
-                    arm::app::img_class::GetModelPointer(),
-                    arm::app::img_class::GetModelLen(),
-                    det_model.GetAllocator())) {
-        printf_err("Failed to initialise recognition model\n");
-        return;
-    }
+    // if (!recog_model.Init(arm::app::tensorArena,
+    //                 sizeof(arm::app::tensorArena),
+    //                 arm::app::img_class::GetModelPointer(),
+    //                 arm::app::img_class::GetModelLen(),
+    //                 det_model.GetAllocator())) {
+    //     printf_err("Failed to initialise recognition model\n");
+    //     return;
+    // }
 
 
     /* Instantiate application context. */
@@ -101,11 +102,23 @@ void main_loop()
     arm::app::Profiler profiler{"object_detection"};
     // arm::app::Profiler profiler{"img_class"};
     caseContext.Set<arm::app::Profiler&>("profiler", profiler);
-    caseContext.Set<arm::app::Model&>("model", det_model);
-    caseContext.Set<arm::app::Model&>("recog_model", recog_model);
+    caseContext.Set<arm::app::Model&>("det_model", det_model);
+    // caseContext.Set<arm::app::Model&>("recog_model", recog_model);
+    
+    // Save the name of the person (later this will be the  name given from the asr process by user_message_callback())
+    std::string myName = "Dinusha";
+    caseContext.Set<std::string&>("my_name", myName);
+ 
+    std::vector<std::vector<uint8_t>> emptyCroppedImages;
+    caseContext.Set<std::vector<std::vector<uint8_t>>>("cropped_images", emptyCroppedImages);
+
+    FaceEmbeddingCollection faceEmbeddingCollection;
+    caseContext.Set<FaceEmbeddingCollection&>("face_embedding_collection", faceEmbeddingCollection);
+
 
     /* Loop. */
     do {
         alif::app::ObjectDetectionHandler(caseContext);
+        // alif::app::ClassifyImageHandler(caseContext);
     } while (1);
 }

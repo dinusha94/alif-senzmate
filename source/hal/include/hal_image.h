@@ -15,6 +15,7 @@
  **/
 
 #include "image_data.h"
+#include "image_processing.h"
 
 #include <stdint.h>
 #include <stddef.h>

@@ -48,7 +48,7 @@ namespace app {
      * @param[in]   ctx        Pointer to the application context.
      * @return      true or false based on execution success.
      **/
-    bool ObjectRecognitionHandler(arm::app::ApplicationContext& ctx);
+    bool ClassifyImageHandler(arm::app::ApplicationContext& ctx);
 
 } /* namespace app */
 } /* namespace alif */
