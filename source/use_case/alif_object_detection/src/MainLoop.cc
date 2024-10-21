@@ -36,8 +36,14 @@
 
 #include "MobileNetModel.hpp"       /* Model class for running inference. */
 #include "FaceEmbedding.hpp" 
+#include <iostream>
 
-
+void delay_ms(int milliseconds) {
+    // Simple busy wait; not accurate, just for demonstration
+    for (volatile int i = 0; i < milliseconds * 1000; ++i) {
+        // Empty loop for delay
+    }
+}
 
 namespace arm {
 namespace app {
@@ -106,27 +112,31 @@ void main_loop()
     caseContext.Set<arm::app::Model&>("recog_model", recog_model);
     
     // Save the name of the person (later this will be the  name given from the asr process by user_message_callback())
-    // std::string myName = "Dinusha";
-    // caseContext.Set<std::string&>("my_name", myName);
+    std::string myName = "Dinusha";
+    caseContext.Set<std::string&>("my_name", myName);
  
-    // // Dynamically allocate the vector on the heap
-    // auto croppedImages = std::make_shared<std::vector<std::vector<uint8_t>>>();
-    // // Set the context to use the heap-allocated object
-    // caseContext.Set<std::shared_ptr<std::vector<std::vector<uint8_t>>>>("cropped_images", croppedImages);
-
     // Dynamically allocate the vector on the heap to hold CroppedImageData
-    // auto croppedImages = std::make_shared<std::vector<CroppedImageData>>();
+    auto croppedImages = std::make_shared<std::vector<alif::app::CroppedImageData>>();
     // Set the context to use the heap-allocated object
-    // caseContext.Set<std::shared_ptr<std::vector<CroppedImageData>>>("cropped_images", croppedImages);
+    caseContext.Set<std::shared_ptr<std::vector<alif::app::CroppedImageData>>>("cropped_images", croppedImages);
 
     // Set the context to save the facial embeddings and corresponding name
-    // FaceEmbeddingCollection faceEmbeddingCollection;
-    // caseContext.Set<FaceEmbeddingCollection&>("face_embedding_collection", faceEmbeddingCollection);
+    FaceEmbeddingCollection faceEmbeddingCollection;
+    caseContext.Set<FaceEmbeddingCollection&>("face_embedding_collection", faceEmbeddingCollection);
+
+    bool faceFlag = false;
+    caseContext.Set<bool>("face_detected_flag", faceFlag);
 
 
     /* Loop. */
     do {
         alif::app::ObjectDetectionHandler(caseContext);
-        // alif::app::ClassifyImageHandler(caseContext);
+
+        if (caseContext.Get<bool>("face_detected_flag")) {
+            alif::app::ClassifyImageHandler(caseContext);  // Run feature extraction
+            caseContext.Set<bool>("face_detected_flag", false); // Reset flag 
+            // delay_ms(1000);
+            break; // exit the loop
+        }
     } while (1);
 }

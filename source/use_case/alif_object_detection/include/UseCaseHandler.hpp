@@ -41,7 +41,7 @@ namespace app {
         int height;
     };
 
-
+  
     bool ObjectDetectionInit();
 
     /**
