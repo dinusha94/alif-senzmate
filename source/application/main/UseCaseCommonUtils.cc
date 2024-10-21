@@ -116,9 +116,9 @@ namespace app {
 
     bool RunInference(arm::app::Model& model, Profiler& profiler)
     {
-        profiler.StartProfiling("Inference");
+        // profiler.StartProfiling("Inference");
         bool runInf = model.RunInference();
-        profiler.StopProfiling();
+        // profiler.StopProfiling();
 
         return runInf;
     }

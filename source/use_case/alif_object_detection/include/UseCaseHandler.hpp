@@ -30,9 +30,17 @@
 #define ALIF_OBJ_DET_HANDLER_HPP
 
 #include "AppContext.hpp"
+#include <vector>
 
 namespace alif {
 namespace app {
+
+    struct CroppedImageData {
+        std::vector<uint8_t> image;
+        int width;
+        int height;
+    };
+
 
     bool ObjectDetectionInit();
 
