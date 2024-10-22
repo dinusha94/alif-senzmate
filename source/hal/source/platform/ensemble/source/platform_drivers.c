@@ -74,7 +74,7 @@ static void ipc_rx_callback(void *data)
     m55_data_payload_t* payload = (m55_data_payload_t*)data;
     char *st = (char*)payload->msg;
     uint16_t id = payload->id;
-    printf("****** Got message from other CPU: %s, id: %d\n", st, id);
+    info("****** Got message from other CPU: %s, id: %d\n", st, id);
 }
 
 
@@ -90,7 +90,7 @@ static void ipc_rx_callback_custom(void *data)
     }
 
     uint16_t id = payload->id;
-    printf("****** Got message from other CPU: %s, id: %d\n", st, id);
+    info("****** Got message from other CPU: %s, id: %d\n", st, id);
 }
 
 
