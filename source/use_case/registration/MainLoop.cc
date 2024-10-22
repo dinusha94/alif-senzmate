@@ -62,22 +62,22 @@ namespace app {
 } /* namespace app */
 } /* namespace arm */
 
-/*
+// Global variable to hold the received message
 const int MAX_MESSAGE_LENGTH = 256;
 char receivedMessage[MAX_MESSAGE_LENGTH];
 
+/* callback function to handle name strings received from speech recognition process*/
 void user_message_callback(char *message) {
     // Store the received message in the global variable
     strncpy(receivedMessage, message, MAX_MESSAGE_LENGTH - 1);
     receivedMessage[MAX_MESSAGE_LENGTH - 1] = '\0'; // Ensure null-termination
     info("Message received in user callback..............................: %s\n", receivedMessage);
 }
-*/
 
 void main_loop()
 {
-    init_trigger_rx();
-    // init_trigger_tx_custom(user_message_callback);
+    // init_trigger_rx();
+    init_trigger_tx_custom(user_message_callback);
 
 
     arm::app::YoloFastestModel det_model;  /* Model wrapper object. */
@@ -124,31 +124,16 @@ void main_loop()
 
     // Set the context to save the facial embeddings and corresponding name
     FaceEmbeddingCollection faceEmbeddingCollection;
-
-    // Add embeddings for a persons (Inference)
-    faceEmbeddingCollection.AddEmbedding("Dinusha", {124, 108, 83, -8, -105, 119, 16, 32, 61, 99, 108, -83, -32, -127, 124, 47,
-                                                        -117, 78, 61, -105, -127, 102, 105, -102, -125, -32, -73, -119, -73, 40,
-                                                        -88, -108, 25, -47, -73, 78, 112, -25, 118, -54, -124, 108, -16, 124, -40,
-                                                        123, 25, -40, 32, 102, 67, 78, 32, 40, 102, -121, 96, -126, -67, 8, -78,
-                                                        61, 0, -99});
-    faceEmbeddingCollection.AddEmbedding("Alice", {55, 108, 83, -8, -105, 25, 16, 32, 61, 99, 55, -83, -55, -127, 124, 47,
-                                                        -117, 78, 61, -105, -25, 25, 105, -102, -125, -25, -73, -119, -73, 55,
-                                                        -88, -108, 25, -47, -73, 78, 112, -25, 118, -54, -124, 108, -16, 25, -40,
-                                                        55, 25, -40, 32, 25, 5, 78, 32, 40, 102, -121, 55, -126, -67, 8, -78,
-                                                        25, 0, -99});
-
     caseContext.Set<FaceEmbeddingCollection&>("face_embedding_collection", faceEmbeddingCollection);
 
     bool faceFlag = false;
     caseContext.Set<bool>("face_detected_flag", faceFlag);
 
-    // Hardcoded person data to test the registration
-    // std::string myName = "Dinusha";
-    // caseContext.Set<std::string&>("my_name", myName);
-    std::string whoAmI = "";
-    caseContext.Set<std::string&>("person_id", whoAmI);
+    // Hardcoded name
+    std::string myName = "Dinusha";
+    caseContext.Set<std::string&>("my_name", myName);
 
-    
+
     /*
     do {
         // Check if there's a new message
@@ -165,21 +150,15 @@ void main_loop()
     */
     
 
-    /* Registration Loop. */
-    // do {
-    //     alif::app::ObjectDetectionHandler(caseContext);
-
-    //     if (caseContext.Get<bool>("face_detected_flag")) {
-    //         alif::app::ClassifyImageHandler(caseContext);  // Run feature extraction
-    //         caseContext.Set<bool>("face_detected_flag", false); // Reset flag 
-    //         // delay_ms(1000);
-    //         break; // exit the loop
-    //     }
-    // } while (1);
-
-    /* Inference Loop. */
-     do {
+    /* Loop. */
+    do {
         alif::app::ObjectDetectionHandler(caseContext);
-        alif::app::ClassifyImageHandler(caseContext);  // Run feature extraction
+
+        if (caseContext.Get<bool>("face_detected_flag")) {
+            alif::app::ClassifyImageHandler(caseContext);  // Run feature extraction
+            caseContext.Set<bool>("face_detected_flag", false); // Reset flag 
+            // delay_ms(1000);
+            break; // exit the loop
+        }
     } while (1);
 }

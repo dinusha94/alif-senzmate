@@ -216,21 +216,21 @@ static void send_name(arm::app::kws::KwsResult &result)
                 printf_err("Pre-processing failed.");
                 return false;
             }
-            printf("Preprocessing time = %.3f ms\n", (double) (Get_SysTick_Cycle_Count32() - start) / SystemCoreClock * 1000);
+            // printf("Preprocessing time = %.3f ms\n", (double) (Get_SysTick_Cycle_Count32() - start) / SystemCoreClock * 1000);
 
             start = Get_SysTick_Cycle_Count32();
             if (!RunInference(model, profiler)) {
                 printf_err("Inference failed.");
                 return false;
             }
-            printf("Inference time = %.3f ms\n", (double) (Get_SysTick_Cycle_Count32() - start) / SystemCoreClock * 1000);
+            // printf("Inference time = %.3f ms\n", (double) (Get_SysTick_Cycle_Count32() - start) / SystemCoreClock * 1000);
 
             start = Get_SysTick_Cycle_Count32();
             if (!postProcess.DoPostProcess()) {
                 printf_err("Post-processing failed.");
                 return false;
             }
-            printf("Postprocessing time = %.3f ms\n", (double) (Get_SysTick_Cycle_Count32() - start) / SystemCoreClock * 1000);
+            // printf("Postprocessing time = %.3f ms\n", (double) (Get_SysTick_Cycle_Count32() - start) / SystemCoreClock * 1000);
 
             /* Add results from this window to our final results vector. */
             if (infResults.size() == RESULTS_MEMORY) {
@@ -251,11 +251,11 @@ static void send_name(arm::app::kws::KwsResult &result)
 
             hal_lcd_clear(COLOR_BLACK);
 
-            if (!PresentInferenceResult(infResults)) {
-                return false;
-            }
+            // if (!PresentInferenceResult(infResults)) {
+            //     return false;
+            // }
 
-            profiler.PrintProfilingResult();
+            // profiler.PrintProfilingResult();
 
             ++index;
         } while (!oneshot);

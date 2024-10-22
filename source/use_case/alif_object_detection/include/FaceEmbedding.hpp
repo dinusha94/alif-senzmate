@@ -4,6 +4,9 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <iostream>
+#include <cmath>
+#include <limits> 
 #include "log_macros.h"
 
 const size_t MAX_EMBEDDINGS_PER_PERSON = 5;  // Limit to 5 embeddings per person
@@ -51,6 +54,38 @@ struct FaceEmbeddingCollection {
         return nullptr; // Return null if not found
     }
 
+    // Calculate Euclidean Distance between two vectors
+    double CalculateEuclideanDistance(const std::vector<int8_t>& v1, const std::vector<int8_t>& v2) const {
+        if (v1.size() != v2.size()) return std::numeric_limits<double>::infinity(); // Return a large value if sizes don't match
+
+        double sum = 0.0;
+        for (size_t i = 0; i < v1.size(); ++i) {
+            sum += std::pow(static_cast<int>(v1[i]) - static_cast<int>(v2[i]), 2);
+        }
+        return std::sqrt(sum);
+    }
+
+    // Find the most similar embedding in the collection and return the person's name
+    std::string FindMostSimilarEmbedding(const std::vector<int8_t>& targetEmbedding) const {
+        double minDistance = std::numeric_limits<double>::infinity();
+        std::string mostSimilarPerson;
+
+        for (const auto& embedding : embeddings) {
+            for (const auto& storedEmbedding : embedding.embeddings) {
+                double distance = CalculateEuclideanDistance(targetEmbedding, storedEmbedding);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    mostSimilarPerson = embedding.name;
+                }
+            }
+        }
+
+        if (minDistance == std::numeric_limits<double>::infinity()) {
+            return "No similar embedding found!";
+        }
+        return mostSimilarPerson;
+    }
+
     // Function to print all embeddings in the collection
     void PrintEmbeddings() const {
         for (const auto& embedding : embeddings) {
@@ -70,7 +105,7 @@ struct FaceEmbeddingCollection {
             info("------------------------\n");  // Separator between different embeddings
         }
     }
-
+    
 };
 
 #endif // FACE_EMBEDDING_H
