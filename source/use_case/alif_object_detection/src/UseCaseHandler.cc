@@ -212,8 +212,8 @@ using namespace arm::app::object_detection;
         auto& model = ctx.Get<Model&>("recog_model");
 
         // Retrieve the name 
-        auto& my_name = ctx.Get<std::string&>("my_name");
-        info("Person Name : %s \n", my_name.c_str());
+        // auto& my_name = ctx.Get<std::string&>("my_name");
+        // info("Person Name : %s \n", my_name.c_str());
 
         // Retrieve the cropped_images vector from the context
         // auto croppedImages = ctx.Get<std::shared_ptr<std::vector<std::vector<uint8_t>>>>("cropped_images");
@@ -251,7 +251,7 @@ using namespace arm::app::object_detection;
             // Allocate memory for the destination image
             uint8_t *dstImage = (uint8_t *)malloc(nCols * nRows * 3);
             if (!dstImage) {
-                perror("Failed to allocate memory for destination image");
+                printf_err("Failed to allocate memory for destination image");
                 return false;
             }
 
@@ -295,13 +295,26 @@ using namespace arm::app::object_detection;
                                                     outputTensor->data.int8 + outputTensor->bytes);
 
             // Save the feature vector along with the name in the embedding collection
-            embeddingCollection.AddEmbedding(my_name, int8_feature_vector);
+            // embeddingCollection.AddEmbedding(my_name, int8_feature_vector);
+
+            // Find the similar embedding vector and get the corresponding name
+
+            for (const auto& value: int8_feature_vector) {
+                info("%d ", static_cast<int>(value));  // Cast to int to avoid printing as a char
+            }
+            info("\n");
+
+            std::string mostSimilarPerson = embeddingCollection.FindMostSimilarEmbedding(int8_feature_vector);
+            info("The most similar embedding belongs to:  %s \n", mostSimilarPerson.c_str());
+
+            ctx.Set<std::string>("person_id", mostSimilarPerson);
+            info("--------------------------------------------------------------------------\n");
 
             free(dstImage);
 
         }
 
-        embeddingCollection.PrintEmbeddings();
+        // embeddingCollection.PrintEmbeddings();
 
         // Clear the cropped images after processing to prepare for the next set
         if (croppedImages) {
@@ -322,7 +335,8 @@ using namespace arm::app::object_detection;
         uint32_t lv_lock_state = lv_port_lock();
         lv_label_set_text_static(ScreenLayoutHeaderObject(), "Face Detection");
         lv_label_set_text_static(ScreenLayoutLabelObject(0), "Faces Detected: 0");
-        lv_label_set_text_static(ScreenLayoutLabelObject(1), "192px image (24-bit)");
+        lv_label_set_text_static(ScreenLayoutLabelObject(1), "Name : ");               // print the name
+        lv_label_set_text_static(ScreenLayoutLabelObject(2), "192px image (24-bit)");
 
         lv_style_init(&boxStyle);
         lv_style_set_bg_opa(&boxStyle, LV_OPA_TRANSP);
@@ -466,6 +480,8 @@ using namespace arm::app::object_detection;
 // #endif
 
             lv_label_set_text_fmt(ScreenLayoutLabelObject(0), "Faces Detected: %i", results.size());
+            auto whoAmI = ctx.Get<std::string>("person_id");  // retrieve the person ID
+            lv_label_set_text_fmt(ScreenLayoutLabelObject(1), "Name : %s", whoAmI.c_str());
 
             /* Draw boxes. */
             DrawDetectionBoxes(results, inputImgCols, inputImgRows);

@@ -170,7 +170,7 @@ using namespace arm::app::object_detection;
             // Calculate size of the cropped image based on the detection box dimensions
             int croppedWidth = result.m_w;
             int croppedHeight = result.m_h;
-            info("Cropped image width: %d, height: %d\n", croppedWidth, croppedHeight);
+            // info("Cropped image width: %d, height: %d\n", croppedWidth, croppedHeight);
 
             // Allocate memory for the cropped image (assuming RGB format, hence *3 for channels)
             std::vector<uint8_t> croppedImage(croppedWidth * croppedHeight * 3);
@@ -182,7 +182,7 @@ using namespace arm::app::object_detection;
             // Crop the detected object from the current image
             if (CropDetectedObject(currImage, inputImgCols, inputImgRows, result, croppedImage.data())) {
                 // Handle the cropped image (display, save, further processing, etc.)
-                info("Cropped object detected at {x=%d, y=%d, w=%d, h=%d}\n", result.m_x0, result.m_y0, result.m_w, result.m_h);
+                // info("Cropped object detected at {x=%d, y=%d, w=%d, h=%d}\n", result.m_x0, result.m_y0, result.m_w, result.m_h);
 
                 // Save the cropped image into the context
                 // croppedImages->push_back(std::move(croppedImage)); 
@@ -240,9 +240,6 @@ using namespace arm::app::object_detection;
         const uint32_t nRows       = MIMAGE_Y;
 
         // Process the current set of cropped images
-        // for (size_t i = 0; i < croppedImages->size(); ++i) {
-        //     const auto& image = (*croppedImages)[i];
-
         for (const auto& croppedImageData: *croppedImages) {
             // Access the image, width, and height
             const std::vector<uint8_t>& image = croppedImageData.image;
@@ -288,16 +285,10 @@ using namespace arm::app::object_detection;
                 return false;
             }
             
-            // info("Inferencing IN \n");
-            // PrintTfLiteTensor(inputTensor);
-
             if (!RunInference(model, profiler)) {
                 printf_err("Inference failed.");
                 return false;
             }
-
-            // info("Inferencing out \n");
-            // PrintTfLiteTensor(outputTensor);
 
             // Convert the output tensor to a vector of int8
             std::vector<int8_t> int8_feature_vector(outputTensor->data.int8, 

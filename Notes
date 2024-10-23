@@ -1,5 +1,6 @@
 # HP
 cmake -DTARGET_PLATFORM=ensemble -DTARGET_SUBSYSTEM=RTSS-HP -DTARGET_BOARD=AppKit -DTARGET_REVISION=B -DCMAKE_TOOLCHAIN_FILE=scripts/cmake/toolchains/bare-metal-gcc.cmake -DCMAKE_BUILD_TYPE=Release -DUSE_CASE_BUILD=alif_object_detection -DLOG_LEVEL=LOG_LEVEL_DEBUG -Dalif_object_detection_ACTIVATION_BUF_SZ=0x00200000 ..
+
 make ethos-u-alif_object_detection -j
 
 # HE
@@ -7,6 +8,25 @@ cmake -DTARGET_PLATFORM=ensemble -DTARGET_SUBSYSTEM=RTSS-HE -DTARGET_BOARD=AppKi
 
 #make
 make ethos-u-alif_kws -j
+
+
+# HP
+cmake -DTARGET_PLATFORM=ensemble
+ -DTARGET_SUBSYSTEM=RTSS-HP 
+ -DTARGET_BOARD=AppKit 
+ -DTARGET_REVISION=B 
+ -DCMAKE_TOOLCHAIN_FILE=scripts/cmake/toolchains/bare-metal-gcc.cmake 
+ -DCMAKE_BUILD_TYPE=Release 
+ -DUSE_CASE_BUILD=asr 
+ -DLOG_LEVEL=LOG_LEVEL_DEBUG 
+ -Dasr_ACTIVATION_BUF_SZ=0x00200000 ..
+
+
+cmake -DTARGET_PLATFORM=ensemble -DTARGET_SUBSYSTEM=RTSS-HP -DTARGET_BOARD=AppKit -DTARGET_REVISION=B -DCMAKE_TOOLCHAIN_FILE=scripts/cmake/toolchains/bare-metal-gcc.cmake -DUSE_CASE_BUILD=asr -DGLCD_UI=NO -DLINKER_SCRIPT_NAME=ensemble-RTSS-HP -DCMAKE_BUILD_TYPE=Release -DLOG_LEVEL=LOG_LEVEL_DEBUG ..
+
+make ethos-u-asr -j
+
+
 
 # Load to AppKit
 ./app-gen-toc -f build/config/kws_demo.json

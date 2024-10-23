@@ -68,10 +68,9 @@ char receivedMessage[MAX_MESSAGE_LENGTH];
 
 /* callback function to handle name strings received from speech recognition process*/
 void user_message_callback(char *message) {
-    // Store the received message in the global variable
     strncpy(receivedMessage, message, MAX_MESSAGE_LENGTH - 1);
     receivedMessage[MAX_MESSAGE_LENGTH - 1] = '\0'; // Ensure null-termination
-    info("Message received in user callback..............................: %s\n", receivedMessage);
+    info("Message received in user callback: %s\n", message);
 }
 
 void main_loop()
@@ -133,32 +132,23 @@ void main_loop()
     std::string myName = "Dinusha";
     caseContext.Set<std::string&>("my_name", myName);
 
-
-    /*
+       
     do {
-        // Check if there's a new message
-        if (strlen(receivedMessage) > 0) {
-            // Process the received message
-            info("Processing message in main loop.................................: %s\n", receivedMessage);
-            std::string myName = receivedMessage; // Create a std::string from the received message
+
+        if (receivedMessage[0] != '\0') {
+            info("Name received: %s\n", receivedMessage);
+            std::string myName(receivedMessage);
             caseContext.Set<std::string&>("my_name", myName);
-            // Clear the received message after processing
-            receivedMessage[0] = '\0'; // Reset the message
-            break;
         }
-    }while (1);
-    */
-    
 
-    /* Loop. */
-    do {
         alif::app::ObjectDetectionHandler(caseContext);
 
         if (caseContext.Get<bool>("face_detected_flag")) {
             alif::app::ClassifyImageHandler(caseContext);  // Run feature extraction
             caseContext.Set<bool>("face_detected_flag", false); // Reset flag 
-            // delay_ms(1000);
             break; // exit the loop
         }
+        
     } while (1);
+    
 }

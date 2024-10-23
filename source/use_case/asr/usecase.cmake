@@ -20,7 +20,7 @@ list(APPEND ${use_case}_API_LIST "asr")
 set_input_file_path_user_option(".wav" ${use_case})
 
 USER_OPTION(${use_case}_MODEL_IN_EXT_FLASH "Run model from external flash"
-    ON
+    OFF
     BOOL)
 
 USER_OPTION(${use_case}_LABELS_TXT_FILE "Labels' txt file for the chosen model."
@@ -79,9 +79,9 @@ USER_OPTION(${use_case}_ACTIVATION_BUF_SZ "Activation buffer size for the chosen
     STRING)
 
 if (ETHOS_U_NPU_ENABLED)
-    set(DEFAULT_MODEL_PATH      ${DEFAULT_MODEL_DIR}/wav2letter_pruned_int8_vela_${ETHOS_U_NPU_CONFIG_ID}.tflite)
+    set(DEFAULT_MODEL_PATH      ${DEFAULT_MODEL_DIR}/tiny_wav2letter_pruned_int8_vela_${ETHOS_U_NPU_CONFIG_ID}.tflite)
 else()
-    set(DEFAULT_MODEL_PATH      ${DEFAULT_MODEL_DIR}/wav2letter_pruned_int8.tflite)
+    set(DEFAULT_MODEL_PATH      ${DEFAULT_MODEL_DIR}/tiny_wav2letter_pruned_int8.tflite)
 endif()
 
 set(EXTRA_MODEL_CODE
