@@ -23,7 +23,6 @@
 #include "log_macros.h"             /* Logging functions */
 #include "BufAttributes.hpp"        /* Buffer attributes to be applied */
 
-
 namespace arm {
 namespace app {
     static uint8_t  tensorArena[ACTIVATION_BUF_SZ] ACTIVATION_BUF_ATTRIBUTE;
@@ -60,12 +59,6 @@ static void DisplayMenu()
 /** @brief   Verify input and output tensor are of certain min dimensions. */
 static bool VerifyTensorDimensions(const arm::app::Model& model);
 
-// #define AUDIO_SAMPLES 44000 // 16k samples/sec, 1sec sample
-// #define AUDIO_STRIDE 8000 // 0.5 seconds
-// #define RESULTS_MEMORY 8
-
-// static int16_t audio_inf[AUDIO_SAMPLES + AUDIO_STRIDE];
-
 void main_loop()
 {
     arm::app::Wav2LetterModel model;  /* Model wrapper object. */
@@ -100,26 +93,51 @@ void main_loop()
     caseContext.Set<arm::app::AsrClassifier&>("classifier", classifier);
 
     bool executionSuccessful = true;
-
+    constexpr bool bUseMenu = NUMBER_OF_FILES > 1 ? true : false;
 
     /* Loop. */
     do {
-
-            executionSuccessful = ClassifyAudioHandler(
-                                    caseContext,
-                                    caseContext.Get<uint32_t>("clipIndex"),
-                                    false);
-
-        // Wait for 1000 ms before the next iteration
-        uint32_t startWait = Get_SysTick_Cycle_Count32();
-        uint32_t waitTime = SystemCoreClock / 1000 * 5000; // Calculate the cycles for 1000 ms
-
-        // Busy-wait loop until 1000 ms has passed
-        while ((Get_SysTick_Cycle_Count32() - startWait) < waitTime) {
-            
+        int menuOption = MENU_OPT_RUN_INF_NEXT;
+        if (bUseMenu) {
+            DisplayMenu();
+            menuOption = arm::app::ReadUserInputAsInt();
+            printf("\n");
         }
-
-    } while (1);
+        switch (menuOption) {
+            case MENU_OPT_RUN_INF_NEXT:
+                executionSuccessful = ClassifyAudioHandler(
+                                        caseContext,
+                                        caseContext.Get<uint32_t>("clipIndex"),
+                                        false);
+                break;
+            case MENU_OPT_RUN_INF_CHOSEN: {
+                printf("    Enter the audio clip index [0, %d]: ",
+                       NUMBER_OF_FILES-1);
+                fflush(stdout);
+                auto clipIndex = static_cast<uint32_t>(
+                                    arm::app::ReadUserInputAsInt());
+                executionSuccessful = ClassifyAudioHandler(caseContext,
+                                                           clipIndex,
+                                                           false);
+                break;
+            }
+            case MENU_OPT_RUN_INF_ALL:
+                executionSuccessful = ClassifyAudioHandler(
+                                        caseContext,
+                                        caseContext.Get<uint32_t>("clipIndex"),
+                                        true);
+                break;
+            case MENU_OPT_SHOW_MODEL_INFO:
+                executionSuccessful = model.ShowModelInfoHandler();
+                break;
+            case MENU_OPT_LIST_AUDIO_CLIPS:
+                executionSuccessful = ListFilesHandler(caseContext);
+                break;
+            default:
+                printf("Incorrect choice, try again.");
+                break;
+        }
+    } while (executionSuccessful && bUseMenu);
     info("Main loop terminated.\n");
 }
 
