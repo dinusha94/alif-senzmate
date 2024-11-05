@@ -128,12 +128,62 @@ int32_t ospi_flash_init()
         return ret;
     }
 
+    // ARM_FLASH_STATUS flash_status;
+    // flash_status = ptrDrvFlash->GetStatus();
+    // printf("flag status register pre: 0x%02X \n", flash_status); // 0x20, 
+    // printf(" flash status pre: %ld \n", flash_status.busy); // 0
+
     ret = ptrDrvFlash->PowerControl(ARM_POWER_FULL);
     if (ret != ARM_DRIVER_OK) {
         printf_err("Ext flash device init failed\n");
         return ret;
     }
 
-    ospi_flash_enable_xip();
+    // flash_status = ptrDrvFlash->GetStatus();
+    // printf("flag status register pro: 0x%02X \n", flash_status); // 0x80, 
+    // printf(" flash status pro: %ld \n", flash_status.busy); // 0
+
+    ospi_flash_enable_xip(); 
+    return ret;
+}
+
+
+int32_t ospi_flash_send()
+{
+    int32_t ret;
+    uint32_t index;
+
+    uint16_t write_buff[1024];
+
+    for (index = 0; index < 1024; index++)
+    {
+        write_buff[index] = index % 65536;
+    }
+
+    // Address 0x00,  subsector 0 
+    ret = ptrDrvFlash->ProgramData(0x00, write_buff, 1024);
+
+    ARM_FLASH_STATUS flash_status;
+    do {
+        flash_status = ptrDrvFlash->GetStatus();
+        info("busy \n");
+    } while (flash_status.busy);
+
+    return ret;
+}
+
+int32_t ospi_flash_read()
+{
+    int32_t ret;
+    uint16_t read_buff[1024];
+
+    ret = ptrDrvFlash->ReadData(0x00, read_buff, 1024);
+
+    ARM_FLASH_STATUS flash_status;
+    do {
+        flash_status = ptrDrvFlash->GetStatus();
+        info("busy \n");
+    } while (flash_status.busy);
+
     return ret;
 }

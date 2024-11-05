@@ -208,7 +208,7 @@ using namespace arm::app::object_detection;
     /* Function to process cropped faces to get the embedding vector */
     bool ClassifyImageHandler(ApplicationContext& ctx) {
 
-        auto& profiler = ctx.Get<Profiler&>("profiler");
+        auto& profiler = ctx.Get<Profiler&>("profiler_class");
         auto& model = ctx.Get<Model&>("recog_model");
 
         // Retrieve the name 
@@ -299,16 +299,16 @@ using namespace arm::app::object_detection;
 
             // Find the similar embedding vector and get the corresponding name
 
-            for (const auto& value: int8_feature_vector) {
-                info("%d ", static_cast<int>(value));  // Cast to int to avoid printing as a char
-            }
-            info("\n");
+            // for (const auto& value: int8_feature_vector) {
+            //     info("%d ", static_cast<int>(value));  // Cast to int to avoid printing as a char
+            // }
+            // info("\n");
 
             std::string mostSimilarPerson = embeddingCollection.FindMostSimilarEmbedding(int8_feature_vector);
-            info("The most similar embedding belongs to:  %s \n", mostSimilarPerson.c_str());
+            // info("The most similar embedding belongs to:  %s \n", mostSimilarPerson.c_str());
 
             ctx.Set<std::string>("person_id", mostSimilarPerson);
-            info("--------------------------------------------------------------------------\n");
+            // info("--------------------------------------------------------------------------\n");
 
             free(dstImage);
 
@@ -322,6 +322,8 @@ using namespace arm::app::object_detection;
         } else {
             printf_err("Failed to retrieve cropped_images from context.\n");
         }
+
+        // profiler.PrintProfilingResult();
 
         return true;
     }
@@ -379,7 +381,7 @@ using namespace arm::app::object_detection;
     /* Object detection inference handler. */
     bool ObjectDetectionHandler(ApplicationContext& ctx)
     {
-        auto& profiler = ctx.Get<Profiler&>("profiler");
+        auto& profiler = ctx.Get<Profiler&>("profiler_det");
         auto& model = ctx.Get<Model&>("det_model");
 
         if (!model.IsInited()) {

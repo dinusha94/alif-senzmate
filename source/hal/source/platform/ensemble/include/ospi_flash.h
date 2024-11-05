@@ -22,6 +22,10 @@ extern "C" {
  */
 int32_t ospi_flash_init(void);
 
+int32_t ospi_flash_send(void);
+
+int32_t ospi_flash_read(void);
+
 #ifdef __cplusplus
 }
 #endif

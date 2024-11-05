@@ -28,6 +28,18 @@
 #include "Wav2LetterPreprocess.hpp"
 #include "hal.h"
 #include "log_macros.h"
+#include "services_lib_api.h"
+#include "services_main.h"
+
+#include <vector>
+
+
+extern uint32_t m55_comms_handle;
+m55_data_payload_t mhu_data;
+
+#define AUDIO_SAMPLES 64000 /*button mode*/
+// #define AUDIO_SAMPLES 16000 /*kws mode*/
+
 
 namespace arm {
 namespace app {
@@ -39,24 +51,28 @@ namespace app {
      **/
     static bool PresentInferenceResult(const std::vector<asr::AsrResult>& results);
 
+
+    static void send_name(std::string name)
+    {
+        
+        mhu_data.id = 3; // id for senzmate app
+
+        info("******************* send_name : %s \n", name.c_str());
+        strcpy(mhu_data.msg, name.c_str());
+        __DMB();
+        SERVICES_send_msg(m55_comms_handle, &mhu_data);
+           
+    }
+
     /* ASR inference handler. */
-    bool ClassifyAudioHandler(ApplicationContext& ctx, uint32_t clipIndex, bool runAll)
+    bool ClassifyAudioHandler(ApplicationContext& ctx, uint32_t mode, bool runAll)
     {
         auto& model          = ctx.Get<Model&>("model");
         auto& profiler       = ctx.Get<Profiler&>("profiler");
         auto mfccFrameLen    = ctx.Get<uint32_t>("frameLength");
         auto mfccFrameStride = ctx.Get<uint32_t>("frameStride");
         auto scoreThreshold  = ctx.Get<float>("scoreThreshold");
-        auto inputCtxLen     = ctx.Get<uint32_t>("ctxLen");
-        /* If the request has a valid size, set the audio index. */
-        if (clipIndex < NUMBER_OF_FILES) {
-            if (!SetAppCtxIfmIdx(ctx, clipIndex, "clipIndex")) {
-                return false;
-            }
-        }
-        auto initialClipIdx                    = ctx.Get<uint32_t>("clipIndex");
-        constexpr uint32_t dataPsnTxtInfStartX = 20;
-        constexpr uint32_t dataPsnTxtInfStartY = 40;
+        auto inputCtxLen     = ctx.Get<uint32_t>("ctxLen");     
 
         if (!model.IsInited()) {
             printf_err("Model is not initialised! Terminating processing.\n");
@@ -72,13 +88,19 @@ namespace app {
 
         const uint32_t inputRowsSize = inputShape->data[Wav2LetterModel::ms_inputRowsIdx];
         const uint32_t inputInnerLen = inputRowsSize - (2 * inputCtxLen);
+        info(" inputRowsSize : %ld \n", inputRowsSize);
+        info(" inputInnerLen : %ld \n", inputInnerLen);
 
         /* Audio data stride corresponds to inputInnerLen feature vectors. */
         const uint32_t audioDataWindowLen = (inputRowsSize - 1) * mfccFrameStride + (mfccFrameLen);
         const uint32_t audioDataWindowStride = inputInnerLen * mfccFrameStride;
 
+        info(" audioDataWindowLen : %ld \n", audioDataWindowLen);
+        info(" audioDataWindowStride : %ld \n", audioDataWindowStride);
+
         /* NOTE: This is only used for time stamp calculation. */
         const float secondsPerSample = (1.0 / audio::Wav2LetterMFCC::ms_defaultSamplingFreq);
+        info(" secondsPerSample : %f \n", secondsPerSample);
 
         /* Set up pre and post-processing objects. */
         AsrPreProcess preProcess = AsrPreProcess(inputTensor,
@@ -97,16 +119,17 @@ namespace app {
                                                     Wav2LetterModel::ms_blankTokenIdx,
                                                     Wav2LetterModel::ms_outputRowsIdx);
 
+        // Retrieve the audio_inf pointer from the context
+        auto audio_inf_vector = ctx.Get<std::vector<int16_t>>("audio_inf_vector");
+        const int16_t* audio_inf = audio_inf_vector.data(); 
+
+
         /* Loop to process audio clips. */
         do {
-            hal_lcd_clear(COLOR_BLACK);
-
-            /* Get current audio clip index. */
-            auto currentIndex = ctx.Get<uint32_t>("clipIndex");
-
+           
             /* Get the current audio buffer and respective size. */
-            const int16_t* audioArr     = GetAudioArray(currentIndex);
-            const uint32_t audioArrSize = GetAudioArraySize(currentIndex);
+            const int16_t* audioArr     =  audio_inf;  // GetAudioArray(currentIndex);
+            const uint32_t audioArrSize =  AUDIO_SAMPLES;     // GetAudioArraySize(currentIndex);
 
             if (!audioArr) {
                 printf_err("Invalid audio array pointer.\n");
@@ -115,7 +138,7 @@ namespace app {
 
             /* Audio clip needs enough samples to produce at least 1 MFCC feature. */
             if (audioArrSize < mfccFrameLen) {
-                printf_err("Not enough audio samples, minimum needed is %" PRIu32 "\n",
+                info("Not enough audio samples, minimum needed is %" PRIu32 "\n",
                            mfccFrameLen);
                 return false;
             }
@@ -126,15 +149,6 @@ namespace app {
 
             /* Declare a container for final results. */
             std::vector<asr::AsrResult> finalResults;
-
-            /* Display message on the LCD - inference running. */
-            std::string str_inf{"Running inference... "};
-            hal_lcd_display_text(
-                str_inf.c_str(), str_inf.size(), dataPsnTxtInfStartX, dataPsnTxtInfStartY, 0);
-
-            info("Running inference on audio clip %" PRIu32 " => %s\n",
-                 currentIndex,
-                 GetFilename(currentIndex));
 
             size_t inferenceWindowLen = audioDataWindowLen;
 
@@ -178,42 +192,63 @@ namespace app {
                     audioDataSlider.Index(),
                     scoreThreshold));
 
-#if VERIFY_TEST_OUTPUT
-                armDumpTensor(outputTensor,
-                              outputTensor->dims->data[Wav2LetterModel::ms_outputColsIdx]);
-#endif        /* VERIFY_TEST_OUTPUT */
+// #if VERIFY_TEST_OUTPUT
+//                 armDumpTensor(outputTensor,
+//                               outputTensor->dims->data[Wav2LetterModel::ms_outputColsIdx]);
+// #endif        /* VERIFY_TEST_OUTPUT */
             } /* while (audioDataSlider.HasNext()) */
 
             /* Erase. */
-            str_inf = std::string(str_inf.size(), ' ');
-            hal_lcd_display_text(
-                str_inf.c_str(), str_inf.size(), dataPsnTxtInfStartX, dataPsnTxtInfStartY, 0);
+            // str_inf = std::string(str_inf.size(), ' ');
+            // hal_lcd_display_text(
+            //     str_inf.c_str(), str_inf.size(), dataPsnTxtInfStartX, dataPsnTxtInfStartY, 0);
 
             ctx.Set<std::vector<asr::AsrResult>>("results", finalResults);
 
-            if (!PresentInferenceResult(finalResults)) {
-                return false;
+            std::vector<ClassificationResult> combinedResults;
+            for (const auto& result : finalResults) {
+                combinedResults.insert(
+                    combinedResults.end(), result.m_resultVec.begin(), result.m_resultVec.end());
             }
 
-            profiler.PrintProfilingResult();
+            /* Get the decoded result for the combined result. */
+            std::string finalResultStr = audio::asr::DecodeOutput(combinedResults);
 
-            IncrementAppCtxIfmIdx(ctx, "clipIndex");
 
-        } while (runAll && ctx.Get<uint32_t>("clipIndex") != initialClipIdx);
+            switch (mode)
+            {
+                case 0:
+                    info("Complete recognition: %s\n", finalResultStr.c_str());
+                    // Check if the result contains "Hi"
+                    if (finalResultStr.find("Hi") != std::string::npos) {
+                        info("The word 'Hi' was detected in the recognition result.");
+                        ctx.Set<bool>("kw_flag", true);
+                    }
+                    break;
+                
+                case 1:
+                    info("Complete recognition: %s\n", finalResultStr.c_str());
+                    send_name(finalResultStr);
+                    break;
+                
+                default:
+                    break;
+            }
+
+            // if (!PresentInferenceResult(finalResults)) {
+            //     return false;
+            // }
+
+            // profiler.PrintProfilingResult();
+
+        } while (runAll); 
 
         return true;
     }
 
     static bool PresentInferenceResult(const std::vector<asr::AsrResult>& results)
     {
-        constexpr uint32_t dataPsnTxtStartX1 = 20;
-        constexpr uint32_t dataPsnTxtStartY1 = 60;
-        constexpr bool allow_multiple_lines  = true;
 
-        hal_lcd_set_text_color(COLOR_GREEN);
-
-        info("Final results:\n");
-        info("Total number of inferences: %zu\n", results.size());
         /* Results from multiple inferences should be combined before processing. */
         std::vector<ClassificationResult> combinedResults;
         for (const auto& result : results) {
@@ -224,23 +259,20 @@ namespace app {
         /* Get each inference result string using the decoder. */
         for (const auto& result : results) {
             std::string infResultStr = audio::asr::DecodeOutput(result.m_resultVec);
-
-            info("For timestamp: %f (inference #: %" PRIu32 "); label: %s\n",
-                 result.m_timeStamp,
-                 result.m_inferenceNumber,
-                 infResultStr.c_str());
         }
 
         /* Get the decoded result for the combined result. */
         std::string finalResultStr = audio::asr::DecodeOutput(combinedResults);
 
-        hal_lcd_display_text(finalResultStr.c_str(),
-                             finalResultStr.size(),
-                             dataPsnTxtStartX1,
-                             dataPsnTxtStartY1,
-                             allow_multiple_lines);
+        // Check if the result contains "Hi"
+        if (finalResultStr.find("Hi") != std::string::npos) {
+            info("The word 'Hi' was detected in the recognition result.");
+        } else {
+            info("The word 'Hi' was not found in the recognition result.");
+        }
 
         info("Complete recognition: %s\n", finalResultStr.c_str());
+        send_name(finalResultStr);
         return true;
     }
 

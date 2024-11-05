@@ -194,6 +194,7 @@ using namespace arm::app::object_detection;
 
                  if (faceDetected) {
                     context.Set<bool>("face_detected_flag", true);  // Set flag to true when object is detected
+                    info("Face detected, face flag set exitiong loop ..\n");
                     break; // exit from the for loop
                 }
 
@@ -301,7 +302,7 @@ using namespace arm::app::object_detection;
 
         }
 
-        // embeddingCollection.PrintEmbeddings();
+        embeddingCollection.PrintEmbeddings();
 
         // Clear the cropped images after processing to prepare for the next set
         if (croppedImages) {
@@ -438,9 +439,9 @@ using namespace arm::app::object_detection;
 //         uint32_t inf_prof = Get_SysTick_Cycle_Count32();
 // #endif
 
-            if (ctx.Get<bool>("buttonflag")) {
+            if (!my_name.empty()) {  // ctx.Get<bool>("buttonflag") ||
 
-                info(" DETECTION  ...............\n");
+            info(" DETECTION  ...............\n");
 
             /* Run the pre-processing, inference and post-processing. */
             if (!preProcess.DoPreProcess(currImage, copySz)) {
@@ -486,7 +487,7 @@ using namespace arm::app::object_detection;
             /* Draw boxes. */
             DrawDetectionBoxes(results, inputImgCols, inputImgRows);
 
-            ctx.Set<bool>("buttonflag", false);
+            // ctx.Set<bool>("buttonflag", false);
 
             }
 
