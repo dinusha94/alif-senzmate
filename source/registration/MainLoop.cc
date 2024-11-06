@@ -68,12 +68,12 @@ void user_message_callback(char *message) {
 }
 
 
-
+// Only for testing 
 std::string pickRandomName(const std::vector<std::string>& names, std::mt19937& generator) {
     std::uniform_int_distribution<> dist(0, names.size() - 1);
     return names[dist(generator)];
 }
-
+// Only for testing 
 std::vector<std::string> nameList = {
         "Alice", "Bob", "Charlie", "David", "Eve",
         "Frank", "Grace", "Hannah", "Ivy", "Jack"
@@ -107,7 +107,7 @@ bool run_requested_(void)
 void main_loop()
 {
     // init_trigger_rx();
-    // init_trigger_tx_custom(user_message_callback);
+    init_trigger_tx_custom(user_message_callback);
 
 
     arm::app::YoloFastestModel det_model;  /* Model wrapper object. */
@@ -164,9 +164,10 @@ void main_loop()
     caseContext.Set<bool>("buttonflag", false);
 
     // Hardcoded name
-    std::string myName = "Dinusha";
+    std::string myName = "";
     caseContext.Set<std::string&>("my_name", myName);
 
+    // Only for testing 
     std::random_device rd;
     std::mt19937 generator(rd());
 
@@ -175,31 +176,33 @@ void main_loop()
 
         alif::app::ObjectDetectionHandler(caseContext);
 
-        // if (receivedMessage[0] != '\0') {
-        //     info("Name received: %s\n", receivedMessage);
-        //     std::string myName(receivedMessage);
-        //     caseContext.Set<std::string&>("my_name", myName);
-        // }
 
+        // speech recognition method
+        if (receivedMessage[0] != '\0') {
+            info("Name received: %s\n", receivedMessage);
+            myName = receivedMessage;
+            caseContext.Set<std::string&>("my_name", myName);
+            memset(receivedMessage, '\0', MAX_MESSAGE_LENGTH); // clear the massage buffer
+        }
+
+
+        // button press model (only for testing)
+        /*
         if (run_requested_())
         {
             caseContext.Set<bool>("buttonflag", true);
             std::string randomName = pickRandomName(nameList, generator);
             caseContext.Set<std::string&>("my_name", randomName);            
-
         }
+        */
 
-        if (caseContext.Get<bool>("face_detected_flag")) {
-            alif::app::ClassifyImageHandler(caseContext);  // Run feature extraction
+        /* extract the facial embedding and register the person */
+        if (caseContext.Get<bool>("face_detected_flag") && !myName.empty()) { 
+            alif::app::ClassifyImageHandler(caseContext); 
             caseContext.Set<bool>("face_detected_flag", false); // Reset flag 
-            // continue;
-        }
-
-        //  uint32_t startWait = Get_SysTick_Cycle_Count32();
-        //         uint32_t waitTime = SystemCoreClock / 1000 * 100; 
-        //         while ((Get_SysTick_Cycle_Count32() - startWait) < waitTime) {
-        //         }       
-       
+            myName.clear();
+            caseContext.Set<std::string&>("my_name", myName);
+        }      
         
     };
     

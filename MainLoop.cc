@@ -1,17 +1,5 @@
-/* This file was ported to work on Alif Semiconductor Ensemble family of devices. */
-
-/* Copyright (C) 2023 Alif Semiconductor - All Rights Reserved.
- * Use, distribution and modification of this code is permitted under the
- * terms stated in the Alif Semiconductor Software License Agreement
- *
- * You should have received a copy of the Alif Semiconductor Software
- * License Agreement with this file. If not, please write to:
- * contact@alifsemi.com, or visit: https://alifsemi.com/license
- *
- */
-
 /*
- * Copyright (c) 2022 Arm Limited. All rights reserved.
+ * SPDX-FileCopyrightText: Copyright 2021 Arm Limited and/or its affiliates <open-source-office@arm.com>
  * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,58 +14,43 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "hal.h"                      /* Brings in platform definitions. */
-#include "InputFiles.hpp"             /* For input images. */
-#include "YoloFastestModel.hpp"       /* Model class for running inference. */
-#include "UseCaseHandler.hpp"         /* Handlers for different user options. */
-#include "UseCaseCommonUtils.hpp"     /* Utils functions. */
+#include "Labels.hpp"                /* For label strings. */
+#include "UseCaseHandler.hpp"        /* Handlers for different user options. */
+#include "Wav2LetterModel.hpp"       /* Model class for running inference. */
+#include "UseCaseCommonUtils.hpp"    /* Utils functions. */
+#include "AsrClassifier.hpp"         /* Classifier. */
+#include "InputFiles.hpp"            /* Generated audio clip header. */
 #include "log_macros.h"             /* Logging functions */
 #include "BufAttributes.hpp"        /* Buffer attributes to be applied */
+#include "hal.h"
+#include "delay.h"
 
-#include "MobileNetModel.hpp"       /* Model class for running inference. */
-#include "FaceEmbedding.hpp" 
-#include <iostream>
-#include <cstring> 
-#include <random>
+#include "ospi_flash.h"
+
+// #include "services_lib_api.h"
+// #include "services_main.h"
+
+// extern uint32_t m55_comms_handle;
+// m55_data_payload_t mhu_data;
 
 namespace arm {
 namespace app {
-    
-    namespace object_detection {
+    static uint8_t  tensorArena[ACTIVATION_BUF_SZ] ACTIVATION_BUF_ATTRIBUTE;
+    namespace asr {
         extern uint8_t* GetModelPointer();
         extern size_t GetModelLen();
-    } /* namespace object_detection */
-
-    namespace img_class{
-        extern uint8_t* GetModelPointer();
-        extern size_t GetModelLen();
-    } // namespace object_recognition
-    static uint8_t tensorArena[ACTIVATION_BUF_SZ] ACTIVATION_BUF_ATTRIBUTE;
+    } /* namespace asr */
 } /* namespace app */
 } /* namespace arm */
 
-// Global variable to hold the received message
-const int MAX_MESSAGE_LENGTH = 256;
-char receivedMessage[MAX_MESSAGE_LENGTH];
-
-/* callback function to handle name strings received from speech recognition process*/
-void user_message_callback(char *message) {
-    strncpy(receivedMessage, message, MAX_MESSAGE_LENGTH - 1);
-    receivedMessage[MAX_MESSAGE_LENGTH - 1] = '\0'; // Ensure null-termination
-    info("Message received in user callback: %s\n", message);
-}
-
-
-
-std::string pickRandomName(const std::vector<std::string>& names, std::mt19937& generator) {
-    std::uniform_int_distribution<> dist(0, names.size() - 1);
-    return names[dist(generator)];
-}
-
-std::vector<std::string> nameList = {
-        "Alice", "Bob", "Charlie", "David", "Eve",
-        "Frank", "Grace", "Hannah", "Ivy", "Jack"
-    };
+enum opcodes
+{
+    MENU_OPT_RUN_INF_NEXT = 1,       /* Run on next vector. */
+    MENU_OPT_RUN_INF_CHOSEN,         /* Run on a user provided vector index. */
+    MENU_OPT_RUN_INF_ALL,            /* Run inference on all. */
+    MENU_OPT_SHOW_MODEL_INFO,        /* Show model info. */
+    MENU_OPT_LIST_AUDIO_CLIPS        /* List the current baked audio clips. */
+};
 
 
 bool last_btn1 = false; 
@@ -104,103 +77,212 @@ bool run_requested_(void)
     return ret; // Return whether inference should be run
 }
 
+static void DisplayMenu()
+{
+    printf("\n\n");
+    printf("User input required\n");
+    printf("Enter option number from:\n\n");
+    printf("  %u. Classify next audio clip\n", MENU_OPT_RUN_INF_NEXT);
+    printf("  %u. Classify audio clip at chosen index\n", MENU_OPT_RUN_INF_CHOSEN);
+    printf("  %u. Run classification on all audio clips\n", MENU_OPT_RUN_INF_ALL);
+    printf("  %u. Show NN model info\n", MENU_OPT_SHOW_MODEL_INFO);
+    printf("  %u. List audio clips\n\n", MENU_OPT_LIST_AUDIO_CLIPS);
+    printf("  Choice: ");
+    fflush(stdout);
+}
+
+// static void send_name(std::string name)
+// {
+    
+//     mhu_data.id = 3; // id for senzmate app
+
+//     info("******************* send_name : %s \n", name.c_str());
+//     strcpy(mhu_data.msg, name.c_str());
+//     __DMB();
+//     SERVICES_send_msg(m55_comms_handle, &mhu_data);
+        
+// }
+
+/** @brief   Verify input and output tensor are of certain min dimensions. */
+static bool VerifyTensorDimensions(const arm::app::Model& model);
+
+/* Buffer to hold kws audio samples */
+#define AUDIO_SAMPLES_KWS 32000 // 1 second samples @ 16kHz
+#define AUDIO_STRIDE_KWS 16000 
+static int16_t audio_inf_kws[AUDIO_SAMPLES_KWS + AUDIO_STRIDE_KWS];
+
 void main_loop()
 {
-    // init_trigger_rx();
-    // init_trigger_tx_custom(user_message_callback);
-
-
-    arm::app::YoloFastestModel det_model;  /* Model wrapper object. */
-    arm::app::MobileNetModel recog_model;
     
-    /* No need to initiate Classification since we use single camera*/
-    if (!alif::app::ObjectDetectionInit()) {
-        printf_err("Failed to initialise use case handler\n");
-    }
+    init_trigger_tx();
+    
+    arm::app::Wav2LetterModel model;  /* Model wrapper object. */
 
-    /* Load the detection model. */
-    if (!det_model.Init(arm::app::tensorArena,
+    /* Load the model. */
+    if (!model.Init(arm::app::tensorArena,
                     sizeof(arm::app::tensorArena),
-                    arm::app::object_detection::GetModelPointer(),
-                    arm::app::object_detection::GetModelLen())) {
+                    arm::app::asr::GetModelPointer(),
+                    arm::app::asr::GetModelLen())) {
         printf_err("Failed to initialise model\n");
         return;
-    }
-
-
-    /* Load the recognition model. */
-    if (!recog_model.Init(arm::app::tensorArena,
-                    sizeof(arm::app::tensorArena),
-                    arm::app::img_class::GetModelPointer(),
-                    arm::app::img_class::GetModelLen(),
-                    det_model.GetAllocator())) {
-        printf_err("Failed to initialise recognition model\n");
+    } else if (!VerifyTensorDimensions(model)) {
+        printf_err("Model's input or output dimension verification failed\n");
         return;
     }
 
-
-    /* Instantiate application context. */
+    // /* Instantiate application context. */
     arm::app::ApplicationContext caseContext;
+    std::vector <std::string> labels;
+    GetLabelsVector(labels);
+    arm::app::AsrClassifier classifier;  /* Classifier wrapper object. */
 
-    arm::app::Profiler profiler{"object_detection"};
-    // arm::app::Profiler profiler{"img_class"};
+    arm::app::Profiler profiler{"asr"};
     caseContext.Set<arm::app::Profiler&>("profiler", profiler);
-    caseContext.Set<arm::app::Model&>("det_model", det_model);
-    caseContext.Set<arm::app::Model&>("recog_model", recog_model);
-     
-    // Dynamically allocate the vector on the heap to hold CroppedImageData
-    auto croppedImages = std::make_shared<std::vector<alif::app::CroppedImageData>>();
-    caseContext.Set<std::shared_ptr<std::vector<alif::app::CroppedImageData>>>("cropped_images", croppedImages);
+    caseContext.Set<arm::app::Model&>("model", model);
+    // caseContext.Set<uint32_t>("clipIndex", 0);
+    caseContext.Set<uint32_t>("frameLength", arm::app::asr::g_FrameLength);
+    caseContext.Set<uint32_t>("frameStride", arm::app::asr::g_FrameStride);
+    caseContext.Set<float>("scoreThreshold", arm::app::asr::g_ScoreThreshold);  /* Score threshold. */
+    caseContext.Set<uint32_t>("ctxLen", arm::app::asr::g_ctxLen);  /* Left and right context length (MFCC feat vectors). */
+    caseContext.Set<const std::vector <std::string>&>("labels", labels);
+    caseContext.Set<arm::app::AsrClassifier&>("classifier", classifier);
 
-    // Set the context to save the facial embeddings and corresponding name
-    FaceEmbeddingCollection faceEmbeddingCollection;
-    caseContext.Set<FaceEmbeddingCollection&>("face_embedding_collection", faceEmbeddingCollection);
+    // flag to check if the specific key-word is detected e.g. hi
+    bool kw_flag = false;
+    caseContext.Set<bool>("kw_flag", kw_flag);
 
-    // flag to notify face detection
-    bool faceFlag = false;
-    caseContext.Set<bool>("face_detected_flag", faceFlag);
+    bool executionSuccessful = true;
 
-    // flag to notify button press event
-    caseContext.Set<bool>("buttonflag", false);
+    static bool audio_inited;
 
-    // Hardcoded name
-    std::string myName = "Dinusha";
-    caseContext.Set<std::string&>("my_name", myName);
-
-    std::random_device rd;
-    std::mt19937 generator(rd());
-
-       
-    while(1) {
-
-        alif::app::ObjectDetectionHandler(caseContext);
-
-        // if (receivedMessage[0] != '\0') {
-        //     info("Name received: %s\n", receivedMessage);
-        //     std::string myName(receivedMessage);
-        //     caseContext.Set<std::string&>("my_name", myName);
-        // }
-
-        if (run_requested_())
-        {
-            caseContext.Set<bool>("buttonflag", true);
-            std::string randomName = pickRandomName(nameList, generator);
-            caseContext.Set<std::string&>("my_name", randomName);            
-
+    if (!audio_inited) {
+        int err = hal_audio_init(16000);  // Initialize audio at 16,000 Hz
+        if (err) {
+            info("hal_audio_init failed with error: %d\n", err);
         }
+        audio_inited = true;
+    }
 
-        if (caseContext.Get<bool>("face_detected_flag")) {
-            alif::app::ClassifyImageHandler(caseContext);  // Run feature extraction
-            caseContext.Set<bool>("face_detected_flag", false); // Reset flag 
-            // continue;
-        }
+    // only in kws mode
+    hal_get_audio_data(audio_inf_kws + AUDIO_SAMPLES_KWS, AUDIO_STRIDE_KWS);
 
-        //  uint32_t startWait = Get_SysTick_Cycle_Count32();
-        //         uint32_t waitTime = SystemCoreClock / 1000 * 100; 
-        //         while ((Get_SysTick_Cycle_Count32() - startWait) < waitTime) {
-        //         }       
-       
-        
-    };
+
+    /* 
+    int32_t ret;
+    ret = ospi_flash_send();
+    info(" FLASH send status: %ld \n", ret);
+    ret = ospi_flash_read();
+    info(" FLASH read status: %ld \n", ret);
+    */
+
     
+    while(1){
+
+        info("KKK ......................\n");
+
+    // button press mode    
+    /*
+    if (run_requested_())
+        {   
+            send_name("Dinusha"); 
+            
+            // hal_get_audio_data(audio_inf_asr, AUDIO_SAMPLES_ASR); // recorded audio data in mono
+           
+            // // Wait until the buffer is fully populated
+            // err = hal_wait_for_audio();
+            // if (err) {
+            //     info("hal_wait_for_audio failed with error: %d\n", err);
+            // }
+
+            // hal_audio_preprocessing(audio_inf_asr, AUDIO_SAMPLES_ASR);
+
+            // sleep_or_wait_msec(300);
+
+            // std::vector<int16_t> audio_inf_vector(audio_inf_asr, audio_inf_asr + AUDIO_SAMPLES_ASR);
+            // caseContext.Set("audio_inf_vector", audio_inf_vector);
+
+            // info("Audio recoded......................\n");
+
+            // executionSuccessful = ClassifyAudioHandler(
+            //                         caseContext,
+            //                         1,
+            //                         false);
+
+        }
+        */
+        
+
+        // kws mode 
+        int err = hal_wait_for_audio();
+        if (err) {
+            printf_err("hal_get_audio_data failed with error: %d\n", err);
+        }
+        info("BBB ......................\n");
+        // move buffer down by one stride, clearing space at the end for the next stride
+        std::copy(audio_inf_kws+ AUDIO_STRIDE_KWS, audio_inf_kws + AUDIO_STRIDE_KWS + AUDIO_SAMPLES_KWS, audio_inf_kws);
+        // start receiving the next stride immediately before we start heavy processing, so as not to lose anything
+        hal_get_audio_data(audio_inf_kws + AUDIO_SAMPLES_KWS, AUDIO_STRIDE_KWS);
+        hal_audio_preprocessing(audio_inf_kws + AUDIO_SAMPLES_KWS - AUDIO_STRIDE_KWS, AUDIO_STRIDE_KWS);
+
+        std::vector<int16_t> audio_inf_vector(audio_inf_kws, audio_inf_kws + AUDIO_SAMPLES_KWS + AUDIO_STRIDE_KWS);
+        caseContext.Set("audio_inf_vector", audio_inf_vector);
+
+        info("AAA ......................\n");
+
+        // if (!caseContext.Get<bool>("kw_flag")){
+
+            info("KWS ......................\n");
+
+            executionSuccessful = ClassifyAudioHandler(
+                                    caseContext,
+                                    0,
+                                    false);
+
+
+        // }
+        
+        // Run ASR if the key-word detected
+       if (caseContext.Get<bool>("kw_flag")) {
+
+            info("ASR ......................\n");
+
+            executionSuccessful = ClassifyAudioHandler(
+                                    caseContext,
+                                    1,
+                                    false);
+
+            caseContext.Set<bool>("kw_flag", false); // Reset flag 
+
+        }
+        
+
+    }
+
+    info("Main loop terminated.\n");
+}
+
+
+
+static bool VerifyTensorDimensions(const arm::app::Model& model)
+{
+    /* Populate tensor related parameters. */
+    TfLiteTensor* inputTensor = model.GetInputTensor(0);
+    if (!inputTensor->dims) {
+        printf_err("Invalid input tensor dims\n");
+        return false;
+    } else if (inputTensor->dims->size < 3) {
+        printf_err("Input tensor dimension should be >= 3\n");
+        return false;
+    }
+
+    TfLiteTensor* outputTensor = model.GetOutputTensor(0);
+    if (!outputTensor->dims) {
+        printf_err("Invalid output tensor dims\n");
+        return false;
+    } else if (outputTensor->dims->size < 3) {
+        printf_err("Output tensor dimension should be >= 3\n");
+        return false;
+    }
+
+    return true;
 }

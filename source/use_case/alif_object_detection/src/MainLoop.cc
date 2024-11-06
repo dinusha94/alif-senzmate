@@ -180,7 +180,6 @@ void main_loop()
         // speech recognition method
         if (receivedMessage[0] != '\0') {
             info("Name received: %s\n", receivedMessage);
-            // std::string myName(receivedMessage);
             myName = receivedMessage;
             caseContext.Set<std::string&>("my_name", myName);
             memset(receivedMessage, '\0', MAX_MESSAGE_LENGTH); // clear the massage buffer
@@ -199,7 +198,6 @@ void main_loop()
 
         /* extract the facial embedding and register the person */
         if (caseContext.Get<bool>("face_detected_flag") && !myName.empty()) { 
-            info("Face recognition .......................\n");
             alif::app::ClassifyImageHandler(caseContext); 
             caseContext.Set<bool>("face_detected_flag", false); // Reset flag 
             myName.clear();

@@ -27,11 +27,11 @@
 
 #include "ospi_flash.h"
 
-#include "services_lib_api.h"
-#include "services_main.h"
+// #include "services_lib_api.h"
+// #include "services_main.h"
 
-extern uint32_t m55_comms_handle;
-m55_data_payload_t mhu_data;
+// extern uint32_t m55_comms_handle;
+// m55_data_payload_t mhu_data;
 
 namespace arm {
 namespace app {
@@ -91,24 +91,20 @@ static void DisplayMenu()
     fflush(stdout);
 }
 
-static void send_name(std::string name)
-{
+// static void send_name(std::string name)
+// {
     
-    mhu_data.id = 3; // id for senzmate app
+//     mhu_data.id = 3; // id for senzmate app
 
-    info("******************* send_name : %s \n", name.c_str());
-    strcpy(mhu_data.msg, name.c_str());
-    __DMB();
-    SERVICES_send_msg(m55_comms_handle, &mhu_data);
+//     info("******************* send_name : %s \n", name.c_str());
+//     strcpy(mhu_data.msg, name.c_str());
+//     __DMB();
+//     SERVICES_send_msg(m55_comms_handle, &mhu_data);
         
-}
+// }
 
 /** @brief   Verify input and output tensor are of certain min dimensions. */
 static bool VerifyTensorDimensions(const arm::app::Model& model);
-
-/* Buffer to hold asr audio samples */
-#define AUDIO_SAMPLES_ASR 64000 // 4 second samples @ 16kHz
-static int16_t audio_inf_asr[AUDIO_SAMPLES_ASR];
 
 /* Buffer to hold kws audio samples */
 #define AUDIO_SAMPLES_KWS 16000 // 1 second samples @ 16kHz
@@ -120,36 +116,36 @@ void main_loop()
     
     init_trigger_tx();
     
-    // arm::app::Wav2LetterModel model;  /* Model wrapper object. */
+    arm::app::Wav2LetterModel model;  /* Model wrapper object. */
 
-    // /* Load the model. */
-    // if (!model.Init(arm::app::tensorArena,
-    //                 sizeof(arm::app::tensorArena),
-    //                 arm::app::asr::GetModelPointer(),
-    //                 arm::app::asr::GetModelLen())) {
-    //     printf_err("Failed to initialise model\n");
-    //     return;
-    // } else if (!VerifyTensorDimensions(model)) {
-    //     printf_err("Model's input or output dimension verification failed\n");
-    //     return;
-    // }
+    /* Load the model. */
+    if (!model.Init(arm::app::tensorArena,
+                    sizeof(arm::app::tensorArena),
+                    arm::app::asr::GetModelPointer(),
+                    arm::app::asr::GetModelLen())) {
+        printf_err("Failed to initialise model\n");
+        return;
+    } else if (!VerifyTensorDimensions(model)) {
+        printf_err("Model's input or output dimension verification failed\n");
+        return;
+    }
 
     // /* Instantiate application context. */
     arm::app::ApplicationContext caseContext;
-    // std::vector <std::string> labels;
-    // GetLabelsVector(labels);
-    // arm::app::AsrClassifier classifier;  /* Classifier wrapper object. */
+    std::vector <std::string> labels;
+    GetLabelsVector(labels);
+    arm::app::AsrClassifier classifier;  /* Classifier wrapper object. */
 
-    // arm::app::Profiler profiler{"asr"};
-    // caseContext.Set<arm::app::Profiler&>("profiler", profiler);
-    // caseContext.Set<arm::app::Model&>("model", model);
-    // // caseContext.Set<uint32_t>("clipIndex", 0);
-    // caseContext.Set<uint32_t>("frameLength", arm::app::asr::g_FrameLength);
-    // caseContext.Set<uint32_t>("frameStride", arm::app::asr::g_FrameStride);
-    // caseContext.Set<float>("scoreThreshold", arm::app::asr::g_ScoreThreshold);  /* Score threshold. */
-    // caseContext.Set<uint32_t>("ctxLen", arm::app::asr::g_ctxLen);  /* Left and right context length (MFCC feat vectors). */
-    // caseContext.Set<const std::vector <std::string>&>("labels", labels);
-    // caseContext.Set<arm::app::AsrClassifier&>("classifier", classifier);
+    arm::app::Profiler profiler{"asr"};
+    caseContext.Set<arm::app::Profiler&>("profiler", profiler);
+    caseContext.Set<arm::app::Model&>("model", model);
+    // caseContext.Set<uint32_t>("clipIndex", 0);
+    caseContext.Set<uint32_t>("frameLength", arm::app::asr::g_FrameLength);
+    caseContext.Set<uint32_t>("frameStride", arm::app::asr::g_FrameStride);
+    caseContext.Set<float>("scoreThreshold", arm::app::asr::g_ScoreThreshold);  /* Score threshold. */
+    caseContext.Set<uint32_t>("ctxLen", arm::app::asr::g_ctxLen);  /* Left and right context length (MFCC feat vectors). */
+    caseContext.Set<const std::vector <std::string>&>("labels", labels);
+    caseContext.Set<arm::app::AsrClassifier&>("classifier", classifier);
 
     // flag to check if the specific key-word is detected e.g. hi
     bool kw_flag = false;
@@ -168,7 +164,7 @@ void main_loop()
     }
 
     // only in kws mode
-    // hal_get_audio_data(audio_inf_kws + AUDIO_SAMPLES_KWS, AUDIO_STRIDE_KWS);
+    hal_get_audio_data(audio_inf_kws + AUDIO_SAMPLES_KWS, AUDIO_STRIDE_KWS);
 
 
     /* 
@@ -183,9 +179,9 @@ void main_loop()
     while(1){
 
     // button press mode    
-    if (run_requested_())
-        {   
-            send_name("Dinusha");
+    // if (run_requested_())
+        // {   
+            // send_name("Dinusha");
             
             // hal_get_audio_data(audio_inf_asr, AUDIO_SAMPLES_ASR); // recorded audio data in mono
            
@@ -209,15 +205,15 @@ void main_loop()
             //                         1,
             //                         false);
 
-        }
+        // }
         
 
         // kws mode 
-        /*
+        
         int err = hal_wait_for_audio();
         if (err) {
             printf_err("hal_get_audio_data failed with error: %d\n", err);
-            return false;
+          
         }
         // move buffer down by one stride, clearing space at the end for the next stride
         std::copy(audio_inf_kws+ AUDIO_STRIDE_KWS, audio_inf_kws + AUDIO_STRIDE_KWS + AUDIO_SAMPLES_KWS, audio_inf_kws);
@@ -228,28 +224,15 @@ void main_loop()
         std::vector<int16_t> audio_inf_vector(audio_inf_kws, audio_inf_kws + AUDIO_SAMPLES_KWS);
         caseContext.Set("audio_inf_vector", audio_inf_vector);
 
+        if (!caseContext.Get<bool>("kw_flag")){
+
         executionSuccessful = ClassifyAudioHandler(
                                 caseContext,
                                 0,
                                 false);
-        
+        }
         // Run ASR if the key-word detected
-        if (caseContext.Get<bool>("kw_flag")) {
-
-            hal_get_audio_data(audio_inf_asr, AUDIO_SAMPLES_ASR); // recorded audio data in mono
-           
-            // Wait until the buffer is fully populated
-            err = hal_wait_for_audio();
-            if (err) {
-                info("hal_wait_for_audio failed with error: %d\n", err);
-            }
-
-            hal_audio_preprocessing(audio_inf_asr, AUDIO_SAMPLES_ASR);
-
-            sleep_or_wait_msec(300);
-
-            std::vector<int16_t> audio_inf_vector(audio_inf_asr, audio_inf_asr + AUDIO_SAMPLES_ASR);
-            caseContext.Set("audio_inf_vector", audio_inf_vector);
+        else if (caseContext.Get<bool>("kw_flag")) {
 
             info("Audio recoded......................\n");
 
@@ -261,7 +244,7 @@ void main_loop()
             caseContext.Set<bool>("kw_flag", false); // Reset flag 
 
         }
-        */
+        
 
     }
 

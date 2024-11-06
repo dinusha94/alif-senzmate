@@ -70,19 +70,26 @@ struct FaceEmbeddingCollection {
         double minDistance = std::numeric_limits<double>::infinity();
         std::string mostSimilarPerson;
 
-        for (const auto& embedding : embeddings) {
-            for (const auto& storedEmbedding : embedding.embeddings) {
+        for (const auto& embedding : embeddings) { /*iterate over persons*/
+            for (const auto& storedEmbedding : embedding.embeddings) { /*iterate over multiple embeddings on the same person*/
                 double distance = CalculateEuclideanDistance(targetEmbedding, storedEmbedding);
+                
                 if (distance < minDistance) {
                     minDistance = distance;
+                    // distance:  (~200 - ~700) matching / >1000 not matching
                     mostSimilarPerson = embedding.name;
                 }
             }
         }
 
+        info(" Most sim person : %s, Min Embedding distance: %f \n", mostSimilarPerson.c_str(), minDistance); 
+
         if (minDistance == std::numeric_limits<double>::infinity()) {
-            return "No similar embedding found!";
+            return "incorrect embeddings!";
         }
+        // else if(minDistance > 1000.0){
+        //     return "No match found";
+        // }
         return mostSimilarPerson;
     }
 

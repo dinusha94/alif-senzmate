@@ -37,9 +37,6 @@
 extern uint32_t m55_comms_handle;
 m55_data_payload_t mhu_data;
 
-#define AUDIO_SAMPLES 64000 /*button mode*/
-// #define AUDIO_SAMPLES 16000 /*kws mode*/
-
 
 namespace arm {
 namespace app {
@@ -123,13 +120,13 @@ namespace app {
         auto audio_inf_vector = ctx.Get<std::vector<int16_t>>("audio_inf_vector");
         const int16_t* audio_inf = audio_inf_vector.data(); 
 
-
+        uint32_t audioArrSize = 16000 + 8000;
+       
         /* Loop to process audio clips. */
         do {
            
             /* Get the current audio buffer and respective size. */
-            const int16_t* audioArr     =  audio_inf;  // GetAudioArray(currentIndex);
-            const uint32_t audioArrSize =  AUDIO_SAMPLES;     // GetAudioArraySize(currentIndex);
+            const int16_t* audioArr     =  audio_inf;                
 
             if (!audioArr) {
                 printf_err("Invalid audio array pointer.\n");
@@ -220,7 +217,7 @@ namespace app {
                 case 0:
                     info("Complete recognition: %s\n", finalResultStr.c_str());
                     // Check if the result contains "Hi"
-                    if (finalResultStr.find("Hi") != std::string::npos) {
+                    if (finalResultStr.find("go") != std::string::npos) {
                         info("The word 'Hi' was detected in the recognition result.");
                         ctx.Set<bool>("kw_flag", true);
                     }

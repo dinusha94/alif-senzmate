@@ -484,12 +484,14 @@ using namespace arm::app::object_detection;
                 lv_label_set_text_fmt(ScreenLayoutLabelObject(1), "Registered: 0");
             }
 
-            /* Draw boxes. */
-            DrawDetectionBoxes(results, inputImgCols, inputImgRows);
-
             // ctx.Set<bool>("buttonflag", false);
 
             }
+
+            /* Draw boxes. */
+            DrawDetectionBoxes(results, inputImgCols, inputImgRows);
+
+
 
         } // ScopedLVGLLock
 
