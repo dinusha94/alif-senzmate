@@ -194,7 +194,6 @@ using namespace arm::app::object_detection;
 
                  if (faceDetected) {
                     context.Set<bool>("face_detected_flag", true);  // Set flag to true when object is detected
-                    info("Face detected, face flag set exitiong loop ..\n");
                     break; // exit from the for loop
                 }
 
@@ -209,12 +208,12 @@ using namespace arm::app::object_detection;
     /* Function to process cropped faces to get the embedding vector */
     bool ClassifyImageHandler(ApplicationContext& ctx) {
 
-        auto& profiler = ctx.Get<Profiler&>("profiler");
+        auto& profiler = ctx.Get<Profiler&>("profiler_class");
         auto& model = ctx.Get<Model&>("recog_model");
 
         // Retrieve the name 
-        auto& my_name = ctx.Get<std::string&>("my_name");
-        info("Person Name : %s \n", my_name.c_str());
+        // auto& my_name = ctx.Get<std::string&>("my_name");
+        // info("Person Name : %s \n", my_name.c_str());
 
         // Retrieve the cropped_images vector from the context
         // auto croppedImages = ctx.Get<std::shared_ptr<std::vector<std::vector<uint8_t>>>>("cropped_images");
@@ -252,7 +251,7 @@ using namespace arm::app::object_detection;
             // Allocate memory for the destination image
             uint8_t *dstImage = (uint8_t *)malloc(nCols * nRows * 3);
             if (!dstImage) {
-                perror("Failed to allocate memory for destination image");
+                printf_err("Failed to allocate memory for destination image");
                 return false;
             }
 
@@ -296,7 +295,20 @@ using namespace arm::app::object_detection;
                                                     outputTensor->data.int8 + outputTensor->bytes);
 
             // Save the feature vector along with the name in the embedding collection
-            embeddingCollection.AddEmbedding(my_name, int8_feature_vector);
+            // embeddingCollection.AddEmbedding(my_name, int8_feature_vector);
+
+            // Find the similar embedding vector and get the corresponding name
+
+            // for (const auto& value: int8_feature_vector) {
+            //     info("%d ", static_cast<int>(value));  // Cast to int to avoid printing as a char
+            // }
+            // info("\n");
+
+            std::string mostSimilarPerson = embeddingCollection.FindMostSimilarEmbedding(int8_feature_vector);
+            // info("The most similar embedding belongs to:  %s \n", mostSimilarPerson.c_str());
+
+            ctx.Set<std::string>("person_id", mostSimilarPerson);
+            // info("--------------------------------------------------------------------------\n");
 
             free(dstImage);
 
@@ -311,6 +323,8 @@ using namespace arm::app::object_detection;
             printf_err("Failed to retrieve cropped_images from context.\n");
         }
 
+        // profiler.PrintProfilingResult();
+
         return true;
     }
 
@@ -323,7 +337,7 @@ using namespace arm::app::object_detection;
         uint32_t lv_lock_state = lv_port_lock();
         lv_label_set_text_static(ScreenLayoutHeaderObject(), "Face Detection");
         lv_label_set_text_static(ScreenLayoutLabelObject(0), "Faces Detected: 0");
-        lv_label_set_text_static(ScreenLayoutLabelObject(1), "Registered: 0");
+        lv_label_set_text_static(ScreenLayoutLabelObject(1), "Name : ");               // print the name
         lv_label_set_text_static(ScreenLayoutLabelObject(2), "192px image (24-bit)");
 
         lv_style_init(&boxStyle);
@@ -367,12 +381,8 @@ using namespace arm::app::object_detection;
     /* Object detection inference handler. */
     bool ObjectDetectionHandler(ApplicationContext& ctx)
     {
-        auto& profiler = ctx.Get<Profiler&>("profiler");
+        auto& profiler = ctx.Get<Profiler&>("profiler_det");
         auto& model = ctx.Get<Model&>("det_model");
-
-        // Retrieve the name 
-        auto& my_name = ctx.Get<std::string&>("my_name");
-        // info("Person Name : %s \n", my_name.c_str());
 
         if (!model.IsInited()) {
             printf_err("Model is not initialised! Terminating processing.\n");
@@ -426,10 +436,10 @@ using namespace arm::app::object_detection;
                             currImage, &lvgl_image[0][0]);
             lv_obj_invalidate(ScreenLayoutImageObject());
 
-            // if (!run_requested()) {
-            //    lv_led_off(ScreenLayoutLEDObject());
-            //    return false;
-            // }
+            if (!run_requested()) {
+               lv_led_off(ScreenLayoutLEDObject());
+               return false;
+            }
 
             lv_led_on(ScreenLayoutLEDObject());
 
@@ -438,10 +448,6 @@ using namespace arm::app::object_detection;
 // #if SHOW_INF_TIME
 //         uint32_t inf_prof = Get_SysTick_Cycle_Count32();
 // #endif
-
-            if (!my_name.empty()) {  // ctx.Get<bool>("buttonflag") ||
-
-            info(" DETECTION  ...............\n");
 
             /* Run the pre-processing, inference and post-processing. */
             if (!preProcess.DoPreProcess(currImage, copySz)) {
@@ -461,13 +467,12 @@ using namespace arm::app::object_detection;
                 return false;
             }
 
+            // info("POSTPROCESSING DONE...........................");
 
             if (!ProcessDetectionsAndCrop(currImage, inputImgCols, inputImgRows, results, ctx)){
                 printf_err("Cropping failed.");
                 return false;
             }
-
-            
 
 // #if SHOW_INF_TIME
 //             inf_prof = Get_SysTick_Cycle_Count32() - inf_prof;
@@ -477,21 +482,11 @@ using namespace arm::app::object_detection;
 // #endif
 
             lv_label_set_text_fmt(ScreenLayoutLabelObject(0), "Faces Detected: %i", results.size());
-
-            if (ctx.Get<bool>("face_detected_flag")) {
-                lv_label_set_text_fmt(ScreenLayoutLabelObject(1), "Registered: %s", my_name.c_str()); // display the registered person name
-            }else {
-                lv_label_set_text_fmt(ScreenLayoutLabelObject(1), "Registered: 0");
-            }
-
-            // ctx.Set<bool>("buttonflag", false);
-
-            }
+            auto whoAmI = ctx.Get<std::string>("person_id");  // retrieve the person ID
+            lv_label_set_text_fmt(ScreenLayoutLabelObject(1), "Name : %s", whoAmI.c_str());
 
             /* Draw boxes. */
             DrawDetectionBoxes(results, inputImgCols, inputImgRows);
-
-
 
         } // ScopedLVGLLock
 

@@ -16,7 +16,7 @@ const size_t MAX_EMBEDDINGS_PER_PERSON = 5;  // Limit to 5 embeddings per person
 struct FaceEmbedding {
     std::string name;                              // Name of the person
     std::vector<std::vector<int8_t>> embeddings;   // Multiple int8 feature vectors
-    std::vector<double> averageEmbedding;  // Average embedding for this person
+    std::vector<double> averageEmbedding;          // Average embedding for this person
 
     // Add a new embedding for this person, but limit the number to MAX_EMBEDDINGS_PER_PERSON
     void AddEmbedding(const std::vector<int8_t>& embedding) {
@@ -45,6 +45,30 @@ struct FaceEmbeddingCollection {
         FaceEmbedding newEmbedding{personName, {faceEmbedding}};
         embeddings.push_back(newEmbedding);
     }
+
+    void AddAvgEmbedding(const std::string& personName, const std::vector<double>& avgEmbedding) {
+        FaceEmbedding* personEmbedding = nullptr;
+        for (auto& embedding : embeddings) {
+            if (embedding.name == personName) {
+                personEmbedding = &embedding;
+                break;
+            }
+        }
+
+        if (!personEmbedding) {
+            // If person is not found, create a new entry with the first embedding
+            FaceEmbedding newEmbedding;
+            newEmbedding.name = personName;
+            newEmbedding.averageEmbedding = avgEmbedding;
+            embeddings.push_back(newEmbedding);
+        }
+        else{
+            personEmbedding->averageEmbedding = avgEmbedding; 
+        }
+
+               
+    }
+
 
     // Retrieve a face embedding by name
     const FaceEmbedding* GetEmbeddingByName(const std::string& personName) const {
