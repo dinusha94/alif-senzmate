@@ -171,6 +171,9 @@ void main_loop()
     std::random_device rd;
     std::mt19937 generator(rd());
 
+    bool avgEmbFlag = false;
+    int loop_idx = 0;
+
        
     while(1) {
 
@@ -198,10 +201,28 @@ void main_loop()
 
         /* extract the facial embedding and register the person */
         if (caseContext.Get<bool>("face_detected_flag") && !myName.empty()) { 
-            alif::app::ClassifyImageHandler(caseContext); 
-            caseContext.Set<bool>("face_detected_flag", false); // Reset flag 
-            myName.clear();
-            caseContext.Set<std::string&>("my_name", myName);
+            avgEmbFlag = true;
+            info("registarion .. \n");
+
+            if (avgEmbFlag && (loop_idx < 5)){
+                info("Averaging embeddings .. \n");
+                alif::app::ClassifyImageHandler(caseContext); 
+                loop_idx ++; 
+            }else {
+                avgEmbFlag = false;
+                loop_idx = 0;
+
+
+                // average the embedding fro the myName
+                faceEmbeddingCollection.CalculateAverageEmbeddingAndSave(myName);
+                info("Averaging finished and saved .. \n");
+
+                faceEmbeddingCollection.PrintEmbeddings();
+
+                caseContext.Set<bool>("face_detected_flag", false); // Reset flag 
+                myName.clear();
+                caseContext.Set<std::string&>("my_name", myName);
+            }
         }      
         
     };

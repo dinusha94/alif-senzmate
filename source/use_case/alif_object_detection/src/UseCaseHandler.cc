@@ -302,7 +302,7 @@ using namespace arm::app::object_detection;
 
         }
 
-        embeddingCollection.PrintEmbeddings();
+        // embeddingCollection.PrintEmbeddings();
 
         // Clear the cropped images after processing to prepare for the next set
         if (croppedImages) {
