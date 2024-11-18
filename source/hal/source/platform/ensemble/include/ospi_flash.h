@@ -11,10 +11,14 @@
 #define OSPI_FLASH_H_
 
 #include <stdint.h>
+#include "Driver_Flash.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/* Use this in my custom flash driver */
+extern ARM_DRIVER_FLASH* const ptrDrvFlash;
 
 /**
  * @brief Initialize OSPI driver and flash chip. Enables XIP mode.
@@ -22,8 +26,17 @@ extern "C" {
  */
 int32_t ospi_flash_init(void);
 
+/**
+ * @brief Initialize OSPI driver and flash chip. program data mode.
+ *
+ */
+// int32_t ospi_flash_send(void);
 int32_t ospi_flash_send(void);
 
+/**
+ * @brief Initialize OSPI driver and flash chip. read data mode.
+ *
+ */
 int32_t ospi_flash_read(void);
 
 #ifdef __cplusplus

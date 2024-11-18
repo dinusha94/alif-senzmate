@@ -26,9 +26,13 @@
 #include "delay.h"
 
 #include "ospi_flash.h"
+#include <iostream>
+#include <cstring> 
+#include <random>
 
 #include "services_lib_api.h"
 #include "services_main.h"
+
 
 extern uint32_t m55_comms_handle;
 m55_data_payload_t mhu_data;
@@ -52,6 +56,11 @@ enum opcodes
     MENU_OPT_LIST_AUDIO_CLIPS        /* List the current baked audio clips. */
 };
 
+// Only for testing
+std::vector<std::string> nameList = {
+        "Alice", "Bob", "Charlie", "David", "Eve",
+        "Frank", "Grace", "Hannah", "Ivy", "Jack"
+    };
 
 bool last_btn1 = false; 
 
@@ -107,13 +116,13 @@ static void send_name(std::string name)
 static bool VerifyTensorDimensions(const arm::app::Model& model);
 
 /* Buffer to hold kws audio samples */
-#define AUDIO_SAMPLES_KWS 16000 // 1 second samples @ 16kHz
+#define AUDIO_SAMPLES_KWS 37547 // 16000 // 1 second samples @ 16kHz
 #define AUDIO_STRIDE_KWS 8000 
-static int16_t audio_inf_kws[AUDIO_SAMPLES_KWS + AUDIO_STRIDE_KWS];
+static int16_t audio_inf_kws[AUDIO_SAMPLES_KWS];
 
 void main_loop()
 {
-    
+   
     init_trigger_tx();
     
     // arm::app::Wav2LetterModel model;  /* Model wrapper object. */
@@ -131,7 +140,7 @@ void main_loop()
     // }
 
     // /* Instantiate application context. */
-    arm::app::ApplicationContext caseContext;
+    // arm::app::ApplicationContext caseContext;
     // std::vector <std::string> labels;
     // GetLabelsVector(labels);
     // arm::app::AsrClassifier classifier;  /* Classifier wrapper object. */
@@ -148,54 +157,52 @@ void main_loop()
     // caseContext.Set<arm::app::AsrClassifier&>("classifier", classifier);
 
     // flag to check if the specific key-word is detected e.g. hi
-    bool kw_flag = false;
-    caseContext.Set<bool>("kw_flag", kw_flag);
+    // bool kw_flag = false;
+    // caseContext.Set<bool>("kw_flag", kw_flag);
 
-    bool executionSuccessful = true;
+    // bool executionSuccessful = true;
 
-    static bool audio_inited;
+    // static bool audio_inited;
 
-    if (!audio_inited) {
-        int err = hal_audio_init(16000);  // Initialize audio at 16,000 Hz
-        if (err) {
-            info("hal_audio_init failed with error: %d\n", err);
-        }
-        audio_inited = true;
-    }
+    // if (!audio_inited) {
+    //     int err = hal_audio_init(16000);  // Initialize audio at 16,000 Hz
+    //     if (err) {
+    //         info("hal_audio_init failed with error: %d\n", err);
+        // }
+        // audio_inited = true;
+    // }
 
     // only in kws mode
-    // hal_get_audio_data(audio_inf_kws + AUDIO_SAMPLES_KWS, AUDIO_STRIDE_KWS);
+    // hal_get_audio_data(audio_inf_kws + AUDIO_SAMPLES_KWS, AUDIO_STRIDE_KWS);    
 
-
-    /* 
-    int32_t ret;
-    ret = ospi_flash_send();
-    info(" FLASH send status: %ld \n", ret);
-    ret = ospi_flash_read();
-    info(" FLASH read status: %ld \n", ret);
-    */
-
+    int i = 0;
     
     while(1){
 
     // button press mode    
     if (run_requested_())
         {   
-            send_name("Dinusha");
-            
-            // hal_get_audio_data(audio_inf_asr, AUDIO_SAMPLES_ASR); // recorded audio data in mono
+         
+            send_name(nameList[i]);
+            i++;
+            if (i > 10){
+                i=0;
+            }
+           
+            // hal_get_audio_data(audio_inf_kws, AUDIO_SAMPLES_KWS); // recorded audio data in mono
            
             // // Wait until the buffer is fully populated
-            // err = hal_wait_for_audio();
+            // int err = hal_wait_for_audio();
             // if (err) {
             //     info("hal_wait_for_audio failed with error: %d\n", err);
             // }
 
-            // hal_audio_preprocessing(audio_inf_asr, AUDIO_SAMPLES_ASR);
+            // hal_audio_preprocessing(audio_inf_kws, AUDIO_SAMPLES_KWS);
 
-            // sleep_or_wait_msec(300);
+            // // sleep_or_wait_msec(300);
 
-            // std::vector<int16_t> audio_inf_vector(audio_inf_asr, audio_inf_asr + AUDIO_SAMPLES_ASR);
+            // std::vector<int16_t> audio_inf_vector(audio_inf_kws, audio_inf_kws + AUDIO_SAMPLES_KWS);
+            // // std::vector<int16_t> audio_inf_vector(audioArr, audioArr + 37547);
             // caseContext.Set("audio_inf_vector", audio_inf_vector);
 
             // info("Audio recoded......................\n");
@@ -206,6 +213,7 @@ void main_loop()
             //                         false);
 
         }
+        
         
 
         // kws mode 
@@ -235,7 +243,6 @@ void main_loop()
         else if (caseContext.Get<bool>("kw_flag")) {
 
             info("Audio recoded......................\n");
-
             executionSuccessful = ClassifyAudioHandler(
                                     caseContext,
                                     1,
@@ -246,7 +253,6 @@ void main_loop()
         }
         */
         
-
     }
 
     info("Main loop terminated.\n");

@@ -35,7 +35,7 @@
 #define FLASH_DEVICE_FAST_READ_WAIT_CYCLES (RTE_ISSI_FLASH_WAIT_CYCLES)
 
 extern ARM_DRIVER_FLASH ARM_Driver_Flash_(1);
-static ARM_DRIVER_FLASH* const ptrDrvFlash = &ARM_Driver_Flash_(1);
+ARM_DRIVER_FLASH* const ptrDrvFlash = &ARM_Driver_Flash_(1);
 
 extern ARM_DRIVER_GPIO ARM_Driver_GPIO_(OSPI_RESET_PORT);
 static ARM_DRIVER_GPIO* const GPIODrv = &ARM_Driver_GPIO_(OSPI_RESET_PORT);
@@ -94,22 +94,99 @@ static void ospi_flash_enable_xip()
 
 static int32_t ospi_flash_toggle_reset(void)
 {
-    int32_t ret = GPIODrv->Initialize(OSPI_RESET_PIN, NULL);
-    if (ret != ARM_DRIVER_OK) { return ret; }
+    int32_t ret;
+
+    /* I/O 0-7 */
+    ret = pinconf_set(PORT_9, PIN_5, PINMUX_ALTERNATE_FUNCTION_1,
+                     PADCTRL_OUTPUT_DRIVE_STRENGTH_12MA | PADCTRL_SLEW_RATE_FAST | PADCTRL_READ_ENABLE);
+    if (ret)
+        return -1;
+
+    ret = pinconf_set(PORT_9, PIN_6, PINMUX_ALTERNATE_FUNCTION_1,
+                     PADCTRL_OUTPUT_DRIVE_STRENGTH_12MA | PADCTRL_SLEW_RATE_FAST | PADCTRL_READ_ENABLE);
+    if (ret)
+        return -1;
+
+    ret = pinconf_set(PORT_9, PIN_7, PINMUX_ALTERNATE_FUNCTION_1,
+                     PADCTRL_OUTPUT_DRIVE_STRENGTH_12MA | PADCTRL_SLEW_RATE_FAST |  PADCTRL_READ_ENABLE);
+    if (ret)
+        return -1;
+
+    ret = pinconf_set(PORT_10, PIN_0, PINMUX_ALTERNATE_FUNCTION_1,
+                     PADCTRL_OUTPUT_DRIVE_STRENGTH_12MA | PADCTRL_SLEW_RATE_FAST | PADCTRL_READ_ENABLE);
+    if (ret)
+        return -1;
+
+    ret = pinconf_set(PORT_10, PIN_1, PINMUX_ALTERNATE_FUNCTION_1,
+                     PADCTRL_OUTPUT_DRIVE_STRENGTH_12MA | PADCTRL_SLEW_RATE_FAST | PADCTRL_READ_ENABLE);
+    if (ret)
+        return -1;
+
+    ret = pinconf_set(PORT_10, PIN_2, PINMUX_ALTERNATE_FUNCTION_1,
+                     PADCTRL_OUTPUT_DRIVE_STRENGTH_12MA | PADCTRL_SLEW_RATE_FAST | PADCTRL_READ_ENABLE);
+    if (ret)
+        return -1;
+
+    ret = pinconf_set(PORT_10, PIN_3, PINMUX_ALTERNATE_FUNCTION_1,
+                     PADCTRL_OUTPUT_DRIVE_STRENGTH_12MA | PADCTRL_SLEW_RATE_FAST | PADCTRL_READ_ENABLE);
+    if (ret)
+        return -1;
+
+    ret = pinconf_set(PORT_10, PIN_4, PINMUX_ALTERNATE_FUNCTION_1,
+                     PADCTRL_OUTPUT_DRIVE_STRENGTH_12MA | PADCTRL_SLEW_RATE_FAST |  PADCTRL_READ_ENABLE);
+    if (ret)
+        return -1;
+
+    /* RXDS */
+    ret = pinconf_set(PORT_10, PIN_7, PINMUX_ALTERNATE_FUNCTION_1,
+                     PADCTRL_OUTPUT_DRIVE_STRENGTH_12MA | PADCTRL_READ_ENABLE);
+    if (ret)
+        return -1;
+
+    /* SCLK */
+    ret = pinconf_set(PORT_5, PIN_5, PINMUX_ALTERNATE_FUNCTION_1,
+                     PADCTRL_OUTPUT_DRIVE_STRENGTH_12MA | PADCTRL_SLEW_RATE_FAST);
+    if (ret)
+        return -1;
+    /* SCLKN */
+    ret = pinconf_set(PORT_8, PIN_0, PINMUX_ALTERNATE_FUNCTION_1, PADCTRL_OUTPUT_DRIVE_STRENGTH_12MA);
+    if (ret)
+        return -1;
+
+    /* ?? this pin is not shown in the App kit board schematic,  when commented send operation did not work */
+    ret = pinconf_set(PORT_5, PIN_6, PINMUX_ALTERNATE_FUNCTION_1,
+                     PADCTRL_READ_ENABLE | PADCTRL_OUTPUT_DRIVE_STRENGTH_12MA);
+    if (ret)
+        return -1;
+    /* SSO */
+    ret = pinconf_set(PORT_5, PIN_7, PINMUX_ALTERNATE_FUNCTION_1,
+                     PADCTRL_OUTPUT_DRIVE_STRENGTH_12MA | PADCTRL_SLEW_RATE_FAST);
+    if (ret)
+        return -1;
+
+    /* toggle reset */
+
+    ret = GPIODrv->Initialize(OSPI_RESET_PIN, NULL);
+    if (ret != ARM_DRIVER_OK)
+        return -1;
 
     ret = GPIODrv->PowerControl(OSPI_RESET_PIN, ARM_POWER_FULL);
-    if (ret != ARM_DRIVER_OK) { return ret; }
+    if (ret != ARM_DRIVER_OK)
+        return -1;
 
     ret = GPIODrv->SetDirection(OSPI_RESET_PIN, GPIO_PIN_DIRECTION_OUTPUT);
-    if (ret != ARM_DRIVER_OK) { return ret; }
+    if (ret != ARM_DRIVER_OK)
+        return -1;
 
     ret = GPIODrv->SetValue(OSPI_RESET_PIN, GPIO_PIN_OUTPUT_STATE_LOW);
-    if (ret != ARM_DRIVER_OK) { return ret; }
+    if (ret != ARM_DRIVER_OK)
+        return -1;
 
     ret = GPIODrv->SetValue(OSPI_RESET_PIN, GPIO_PIN_OUTPUT_STATE_HIGH);
-    if (ret != ARM_DRIVER_OK) { return ret; }
+    if (ret != ARM_DRIVER_OK)
+        return -1;
 
-    return ret;
+    return 0;
 }
 
 
@@ -128,22 +205,13 @@ int32_t ospi_flash_init()
         return ret;
     }
 
-    // ARM_FLASH_STATUS flash_status;
-    // flash_status = ptrDrvFlash->GetStatus();
-    // printf("flag status register pre: 0x%02X \n", flash_status); // 0x20, 
-    // printf(" flash status pre: %ld \n", flash_status.busy); // 0
-
     ret = ptrDrvFlash->PowerControl(ARM_POWER_FULL);
     if (ret != ARM_DRIVER_OK) {
         printf_err("Ext flash device init failed\n");
         return ret;
     }
 
-    // flash_status = ptrDrvFlash->GetStatus();
-    // printf("flag status register pro: 0x%02X \n", flash_status); // 0x80, 
-    // printf(" flash status pro: %ld \n", flash_status.busy); // 0
-
-    ospi_flash_enable_xip(); 
+    ospi_flash_enable_xip();
     return ret;
 }
 
@@ -152,16 +220,17 @@ int32_t ospi_flash_send()
 {
     int32_t ret;
     uint32_t index;
-
     uint16_t write_buff[1024];
 
-    for (index = 0; index < 1024; index++)
+   for (index = 0; index < 1024; index++)
     {
-        write_buff[index] = index % 65536;
+        write_buff[index] = 1654;
     }
 
+    // ret = ptrDrvFlash->EraseChip();
+
     // Address 0x00,  subsector 0 
-    ret = ptrDrvFlash->ProgramData(0x00, write_buff, 1024);
+    ret = ptrDrvFlash->ProgramData(0xC0000000, write_buff, 1024);
 
     ARM_FLASH_STATUS flash_status;
     do {
@@ -172,18 +241,39 @@ int32_t ospi_flash_send()
     return ret;
 }
 
+
 int32_t ospi_flash_read()
 {
     int32_t ret;
+    uint32_t count = 0, iter = 0;
     uint16_t read_buff[1024];
 
-    ret = ptrDrvFlash->ReadData(0x00, read_buff, 1024);
+    ret = ptrDrvFlash->ReadData(0xC0000000, read_buff, 1024);
 
     ARM_FLASH_STATUS flash_status;
     do {
         flash_status = ptrDrvFlash->GetStatus();
         info("busy \n");
     } while (flash_status.busy);
+
+    printf("Data in read_buff:\n");
+    for (int i = 0; i < 1024; ++i) {
+        printf("0x%04X ", read_buff[i]);  // %04X prints 4-digit hexadecimal with leading zeros
+        if ((i + 1) % 8 == 0) {
+            printf("\n");  // Newline every 8 elements
+        }
+
+    }
+    printf("\n");
+
+    while (iter < 1024)
+    {
+        if (read_buff[iter] != 1654)
+            count++;
+        iter++;
+    }
+
+    printf("Total errors after reading data written to flash = %d\n", count);
 
     return ret;
 }

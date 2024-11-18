@@ -217,11 +217,17 @@ struct FaceEmbeddingCollection {
 
         info("Most similar person: %s, Max similarity: %f \n", mostSimilarPerson.c_str(), maxSimilarity); 
 
-        if (maxSimilarity == -std::numeric_limits<double>::infinity()) {
-            return "No similar embeddings found!";
+        // if (maxSimilarity == -std::numeric_limits<double>::infinity()) {
+        //     return "No similar embeddings found!";
+        // }
+        if (maxSimilarity > 0.6){
+            return mostSimilarPerson;
+        }
+        else{
+            return "identifying ...";
         }
 
-        return mostSimilarPerson;
+        
     }
 
     // Function to print all embeddings in the collection

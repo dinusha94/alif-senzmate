@@ -39,6 +39,7 @@
 #include <iostream>
 #include <cstring> 
 #include <random>
+#include "Flash.hpp"                /* Save registration data in the flash */
 
 namespace arm {
 namespace app {
@@ -69,15 +70,15 @@ void user_message_callback(char *message) {
 
 
 // Only for testing 
-std::string pickRandomName(const std::vector<std::string>& names, std::mt19937& generator) {
-    std::uniform_int_distribution<> dist(0, names.size() - 1);
-    return names[dist(generator)];
-}
+// std::string pickRandomName(const std::vector<std::string>& names, std::mt19937& generator) {
+//     std::uniform_int_distribution<> dist(0, names.size() - 1);
+//     return names[dist(generator)];
+// }
 // Only for testing 
-std::vector<std::string> nameList = {
-        "Alice", "Bob", "Charlie", "David", "Eve",
-        "Frank", "Grace", "Hannah", "Ivy", "Jack"
-    };
+// std::vector<std::string> nameList = {
+//         "Alice", "Bob", "Charlie", "David", "Eve",
+//         "Frank", "Grace", "Hannah", "Ivy", "Jack"
+//     };
 
 
 bool last_btn1 = false; 
@@ -156,6 +157,9 @@ void main_loop()
     FaceEmbeddingCollection faceEmbeddingCollection;
     caseContext.Set<FaceEmbeddingCollection&>("face_embedding_collection", faceEmbeddingCollection);
 
+    // Collection to load stored face embeddings
+    FaceEmbeddingCollection stored_collection;
+
     // flag to notify face detection
     bool faceFlag = false;
     caseContext.Set<bool>("face_detected_flag", faceFlag);
@@ -168,11 +172,13 @@ void main_loop()
     caseContext.Set<std::string&>("my_name", myName);
 
     // Only for testing 
-    std::random_device rd;
-    std::mt19937 generator(rd());
+    // std::random_device rd;
+    // std::mt19937 generator(rd());
 
     bool avgEmbFlag = false;
     int loop_idx = 0;
+
+    int32_t ret;
 
        
     while(1) {
@@ -190,14 +196,14 @@ void main_loop()
 
 
         // button press model (only for testing)
-        /*
-        if (run_requested_())
-        {
-            caseContext.Set<bool>("buttonflag", true);
-            std::string randomName = pickRandomName(nameList, generator);
-            caseContext.Set<std::string&>("my_name", randomName);            
-        }
-        */
+        
+        // if (run_requested_())
+        // {
+        //     caseContext.Set<bool>("buttonflag", true);
+        //     std::string randomName = pickRandomName(nameList, generator);
+        //     caseContext.Set<std::string&>("my_name", randomName);            
+        // }
+        
 
         /* extract the facial embedding and register the person */
         if (caseContext.Get<bool>("face_detected_flag") && !myName.empty()) { 
@@ -212,12 +218,18 @@ void main_loop()
                 avgEmbFlag = false;
                 loop_idx = 0;
 
-
                 // average the embedding fro the myName
                 faceEmbeddingCollection.CalculateAverageEmbeddingAndSave(myName);
                 info("Averaging finished and saved .. \n");
 
                 faceEmbeddingCollection.PrintEmbeddings();
+
+                /* save embedding data to ospi flash  */
+                ret = flash_send(faceEmbeddingCollection);
+                info(" FLASH send status: %ld \n", ret);
+                ret = ospi_flash_read_collection(stored_collection);
+                // ret = read_collection_from_file(stored_collection);
+                stored_collection.PrintEmbeddings();
 
                 caseContext.Set<bool>("face_detected_flag", false); // Reset flag 
                 myName.clear();

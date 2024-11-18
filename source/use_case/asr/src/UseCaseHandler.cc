@@ -120,7 +120,7 @@ namespace app {
         auto audio_inf_vector = ctx.Get<std::vector<int16_t>>("audio_inf_vector");
         const int16_t* audio_inf = audio_inf_vector.data(); 
 
-        uint32_t audioArrSize = 16000 + 8000;
+        uint32_t audioArrSize = 37547; // 16000 + 8000;
        
         /* Loop to process audio clips. */
         do {

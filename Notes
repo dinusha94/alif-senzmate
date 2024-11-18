@@ -27,10 +27,37 @@ cmake -DTARGET_PLATFORM=ensemble -DTARGET_SUBSYSTEM=RTSS-HP -DTARGET_BOARD=AppKi
 make ethos-u-asr -j
 
 
+python3 run_audio_file.py --audio_file_path another_door.wav --model_file_path wav2letter_pruned_int8.tflite --preferred_backends CpuAcc CpuRef
+
+
 
 # Load to AppKit
 ./app-gen-toc -f build/config/kws_demo.json
 sudo ./app-write-mram -p
 
 cd /home/dinusha/alif_ml-embedded-evaluation-kit/resources_downloaded/our_models
+
 vela --accelerator-config=ethos-u55-256 --optimise Performance --config /home/dinusha/alif_ml-embedded-evaluation-kit/scripts/vela/default_vela.ini --memory-mode=Shared_Sram --system-config=Ethos_U55_High_End_Embedded --output-dir=. mobilenet_v2_1.0_112_quant.tflite
+
+vela ./mobile_face_net_int8_2.tflite --accelerator-config=ethos-u55-256  --memory-mode=Shared_Sram --system-config=Ethos_U55_High_End_Embedded --verbose-performance --config /home/dinusha/alif_ml-embedded-evaluation-kit/scripts/vela/default_vela.ini --output-dir ./custom/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
