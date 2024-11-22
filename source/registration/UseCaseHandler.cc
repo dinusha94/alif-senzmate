@@ -110,6 +110,16 @@ using namespace arm::app::object_detection;
         }
     }
 
+    static void DeleteBoxes(lv_obj_t *frame)
+    {
+        // Assume that child 0 of the frame is the image itself
+        int children = lv_obj_get_child_cnt(frame);
+        while (children > 1) {
+            lv_obj_del(lv_obj_get_child(frame, 1));
+            children--;
+        }
+    }
+
     void DisplayCroppedImage(const std::vector<uint8_t>& croppedImage, int width, int height) {
         // Assuming lvgl_image is a 2D buffer that corresponds to your display dimensions
         // You'll need to determine how to map the cropped image onto the lvgl_image buffer.
@@ -170,7 +180,6 @@ using namespace arm::app::object_detection;
             // Calculate size of the cropped image based on the detection box dimensions
             int croppedWidth = result.m_w;
             int croppedHeight = result.m_h;
-            // info("Cropped image width: %d, height: %d\n", croppedWidth, croppedHeight);
 
             // Allocate memory for the cropped image (assuming RGB format, hence *3 for channels)
             std::vector<uint8_t> croppedImage(croppedWidth * croppedHeight * 3);
@@ -181,16 +190,9 @@ using namespace arm::app::object_detection;
 
             // Crop the detected object from the current image
             if (CropDetectedObject(currImage, inputImgCols, inputImgRows, result, croppedImage.data())) {
-                // Handle the cropped image (display, save, further processing, etc.)
-                // info("Cropped object detected at {x=%d, y=%d, w=%d, h=%d}\n", result.m_x0, result.m_y0, result.m_w, result.m_h);
-
-                // Save the cropped image into the context
-                // croppedImages->push_back(std::move(croppedImage)); 
+   
                 croppedImages->emplace_back(CroppedImageData{ std::move(croppedImage), croppedWidth, croppedHeight });
                 faceDetected = true;
-
-                // Display the cropped image
-                // DisplayCroppedImage(croppedImages.back(), croppedWidth, croppedHeight);
 
                  if (faceDetected) {
                     context.Set<bool>("face_detected_flag", true);  // Set flag to true when object is detected
@@ -217,17 +219,13 @@ using namespace arm::app::object_detection;
         info("Person Name : %s \n", my_name.c_str());
 
         // Retrieve the cropped_images vector from the context
-        // auto croppedImages = ctx.Get<std::shared_ptr<std::vector<std::vector<uint8_t>>>>("cropped_images");
         auto croppedImages = ctx.Get<std::shared_ptr<std::vector<CroppedImageData>>>("cropped_images");
         
-
         // Check if the pointer is valid
         if (!croppedImages) {
             printf_err("Failed to retrieve cropped_images from context.\n");
             return false;
         }
-
-        // info("Processing %zu cropped images...\n", croppedImages->size());
 
         // Retrieve the face embedding collection
         auto& embeddingCollection = ctx.Get<FaceEmbeddingCollection&>("face_embedding_collection");
@@ -246,8 +244,6 @@ using namespace arm::app::object_detection;
             const std::vector<uint8_t>& image = croppedImageData.image;
             int width = croppedImageData.width;
             int height = croppedImageData.height;
-
-            // info("Processing cropped image %zu \n", i);
 
             // Allocate memory for the destination image
             uint8_t *dstImage = (uint8_t *)malloc(nCols * nRows * 3);
@@ -302,14 +298,18 @@ using namespace arm::app::object_detection;
 
         }
 
-        // embeddingCollection.PrintEmbeddings();
-
         // Clear the cropped images after processing to prepare for the next set
         if (croppedImages) {
             croppedImages->clear(); // Clear the vector of cropped images
         } else {
             printf_err("Failed to retrieve cropped_images from context.\n");
         }
+
+        {
+            ScopedLVGLLock lv_lock;
+            lv_label_set_text_fmt(ScreenLayoutLabelObject(2), "Pose Now !! ");
+
+        } // ScopedLVGLLock
 
         return true;
     }
@@ -324,7 +324,7 @@ using namespace arm::app::object_detection;
         lv_label_set_text_static(ScreenLayoutHeaderObject(), "Face Detection");
         lv_label_set_text_static(ScreenLayoutLabelObject(0), "Faces Detected: 0");
         lv_label_set_text_static(ScreenLayoutLabelObject(1), "Registered: 0");
-        lv_label_set_text_static(ScreenLayoutLabelObject(2), "192px image (24-bit)");
+        lv_label_set_text_static(ScreenLayoutLabelObject(2), "");
 
         lv_style_init(&boxStyle);
         lv_style_set_bg_opa(&boxStyle, LV_OPA_TRANSP);
@@ -417,7 +417,6 @@ using namespace arm::app::object_detection;
         }
 
         // Display and inference start
-
         {
             ScopedLVGLLock lv_lock;
 
@@ -434,10 +433,6 @@ using namespace arm::app::object_detection;
             lv_led_on(ScreenLayoutLEDObject());
 
             const size_t copySz = inputTensor->bytes;
-
-// #if SHOW_INF_TIME
-//         uint32_t inf_prof = Get_SysTick_Cycle_Count32();
-// #endif
 
             if (!my_name.empty()) {  // ctx.Get<bool>("buttonflag") ||
 
@@ -461,20 +456,10 @@ using namespace arm::app::object_detection;
                 return false;
             }
 
-
             if (!ProcessDetectionsAndCrop(currImage, inputImgCols, inputImgRows, results, ctx)){
                 printf_err("Cropping failed.");
                 return false;
             }
-
-            
-
-// #if SHOW_INF_TIME
-//             inf_prof = Get_SysTick_Cycle_Count32() - inf_prof;
-//             lv_label_set_text_fmt(ScreenLayoutLabelObject(2), "Inference time: %.3f ms", (double)inf_prof / SystemCoreClock * 1000);
-//             lv_label_set_text_fmt(ScreenLayoutLabelObject(3), "Inferences / sec: %.2f", (double) SystemCoreClock / inf_prof);
-//             //lv_label_set_text_fmt(ScreenLayoutLabelObject(3), "Inferences / second: %.2f", (double) SystemCoreClock / (inf_loop_time_end - inf_loop_time_start));
-// #endif
 
             lv_label_set_text_fmt(ScreenLayoutLabelObject(0), "Faces Detected: %i", results.size());
 
@@ -488,33 +473,15 @@ using namespace arm::app::object_detection;
 
             }
 
+             lv_label_set_text_fmt(ScreenLayoutLabelObject(2), "");
+
             /* Draw boxes. */
             DrawDetectionBoxes(results, inputImgCols, inputImgRows);
 
-
-
         } // ScopedLVGLLock
-
-// #if VERIFY_TEST_OUTPUT
-//         DumpTensor(modelOutput0);
-//         DumpTensor(modelOutput1);
-// #endif /* VERIFY_TEST_OUTPUT */
-
-        // if (!PresentInferenceResult(results)) {
-        //     return false;
-        // }
-
-        // profiler.PrintProfilingResult();
 
         return true;
     }
-
-
-
-
-
-
-
 
     static bool PresentInferenceResult(const std::vector<object_detection::DetectionResult>& results)
     {
@@ -529,16 +496,6 @@ using namespace arm::app::object_detection;
         }
 
         return true;
-    }
-
-    static void DeleteBoxes(lv_obj_t *frame)
-    {
-        // Assume that child 0 of the frame is the image itself
-        int children = lv_obj_get_child_cnt(frame);
-        while (children > 1) {
-            lv_obj_del(lv_obj_get_child(frame, 1));
-            children--;
-        }
     }
 
     static void CreateBox(lv_obj_t *frame, int x0, int y0, int w, int h)

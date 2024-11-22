@@ -156,7 +156,6 @@ using namespace arm::app::object_detection;
     // This is the function that processes all detection results and crops the corresponding regions.
     bool ProcessDetectionsAndCrop(const uint8_t* currImage, int inputImgCols, int inputImgRows, const std::vector<object_detection::DetectionResult>& results, arm::app::ApplicationContext& context) {
 
-        // auto croppedImages = context.Get<std::shared_ptr<std::vector<std::vector<uint8_t>>>>("cropped_images");
         auto croppedImages = context.Get<std::shared_ptr<std::vector<CroppedImageData>>>("cropped_images");
         bool faceDetected = false;
 
@@ -170,7 +169,6 @@ using namespace arm::app::object_detection;
             // Calculate size of the cropped image based on the detection box dimensions
             int croppedWidth = result.m_w;
             int croppedHeight = result.m_h;
-            // info("Cropped image width: %d, height: %d\n", croppedWidth, croppedHeight);
 
             // Allocate memory for the cropped image (assuming RGB format, hence *3 for channels)
             std::vector<uint8_t> croppedImage(croppedWidth * croppedHeight * 3);
@@ -181,16 +179,10 @@ using namespace arm::app::object_detection;
 
             // Crop the detected object from the current image
             if (CropDetectedObject(currImage, inputImgCols, inputImgRows, result, croppedImage.data())) {
-                // Handle the cropped image (display, save, further processing, etc.)
-                // info("Cropped object detected at {x=%d, y=%d, w=%d, h=%d}\n", result.m_x0, result.m_y0, result.m_w, result.m_h);
-
+                  
                 // Save the cropped image into the context
-                // croppedImages->push_back(std::move(croppedImage)); 
                 croppedImages->emplace_back(CroppedImageData{ std::move(croppedImage), croppedWidth, croppedHeight });
                 faceDetected = true;
-
-                // Display the cropped image
-                // DisplayCroppedImage(croppedImages.back(), croppedWidth, croppedHeight);
 
                  if (faceDetected) {
                     context.Set<bool>("face_detected_flag", true);  // Set flag to true when object is detected
@@ -211,12 +203,7 @@ using namespace arm::app::object_detection;
         auto& profiler = ctx.Get<Profiler&>("profiler_class");
         auto& model = ctx.Get<Model&>("recog_model");
 
-        // Retrieve the name 
-        // auto& my_name = ctx.Get<std::string&>("my_name");
-        // info("Person Name : %s \n", my_name.c_str());
-
         // Retrieve the cropped_images vector from the context
-        // auto croppedImages = ctx.Get<std::shared_ptr<std::vector<std::vector<uint8_t>>>>("cropped_images");
         auto croppedImages = ctx.Get<std::shared_ptr<std::vector<CroppedImageData>>>("cropped_images");
         
 
@@ -225,8 +212,6 @@ using namespace arm::app::object_detection;
             printf_err("Failed to retrieve cropped_images from context.\n");
             return false;
         }
-
-        // info("Processing %zu cropped images...\n", croppedImages->size());
 
         // Retrieve the face embedding collection
         auto& embeddingCollection = ctx.Get<FaceEmbeddingCollection&>("face_embedding_collection");
@@ -245,8 +230,6 @@ using namespace arm::app::object_detection;
             const std::vector<uint8_t>& image = croppedImageData.image;
             int width = croppedImageData.width;
             int height = croppedImageData.height;
-
-            // info("Processing cropped image %zu \n", i);
 
             // Allocate memory for the destination image
             uint8_t *dstImage = (uint8_t *)malloc(nCols * nRows * 3);
@@ -274,7 +257,7 @@ using namespace arm::app::object_detection;
                 return false;
             }
 
-            // /* Set up pre and post-processing. */
+            /* Set up pre and post-processing. */
             ImgClassPreProcess preProcess = ImgClassPreProcess(inputTensor, model.IsDataSigned());
 
             const size_t imgSz = inputTensor->bytes;
@@ -294,27 +277,13 @@ using namespace arm::app::object_detection;
             std::vector<int8_t> int8_feature_vector(outputTensor->data.int8, 
                                                     outputTensor->data.int8 + outputTensor->bytes);
 
-            // Save the feature vector along with the name in the embedding collection
-            // embeddingCollection.AddEmbedding(my_name, int8_feature_vector);
-
-            // Find the similar embedding vector and get the corresponding name
-
-            // for (const auto& value: int8_feature_vector) {
-            //     info("%d ", static_cast<int>(value));  // Cast to int to avoid printing as a char
-            // }
-            // info("\n");
-
             std::string mostSimilarPerson = embeddingCollection.FindMostSimilarEmbedding(int8_feature_vector);
-            // info("The most similar embedding belongs to:  %s \n", mostSimilarPerson.c_str());
 
             ctx.Set<std::string>("person_id", mostSimilarPerson);
-            // info("--------------------------------------------------------------------------\n");
 
             free(dstImage);
 
         }
-
-        // embeddingCollection.PrintEmbeddings();
 
         // Clear the cropped images after processing to prepare for the next set
         if (croppedImages) {

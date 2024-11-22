@@ -91,12 +91,14 @@ int32_t camera_init(uint8_t* buffer)
 
 #ifdef CPI_CONFIGURE
     res = camera->Control(CPI_CONFIGURE, 0);
+
     if (res != ARM_DRIVER_OK) {
         return res;
     }
 #endif
 
     res = camera->Control(CPI_EVENTS_CONFIGURE, ARM_CPI_EVENT_CAMERA_CAPTURE_STOPPED);
+
     if (res != ARM_DRIVER_OK) {
         return res;
     }

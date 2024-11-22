@@ -139,6 +139,7 @@ static int32_t CPIx_Initialize(CPI_RESOURCES *CPI, CAMERA_SENSOR_DEVICE *cam_sen
 #if (RTE_MIPI_CSI2)
     /*Initializing MIPI CSI2 if the sensor is MIPI CSI2 sensor*/
     ret = Driver_MIPI_CSI2.Initialize(ARM_MIPI_CSI2_Event_Callback);
+
     if(ret != ARM_DRIVER_OK)
     {
         return ret;

@@ -33,13 +33,15 @@
 #include "UseCaseCommonUtils.hpp"     /* Utils functions. */
 #include "log_macros.h"             /* Logging functions */
 #include "BufAttributes.hpp"        /* Buffer attributes to be applied */
-
 #include "MobileNetModel.hpp"       /* Model class for running inference. */
-#include "FaceEmbedding.hpp" 
+#include "delay.h"
+
+#include "FaceEmbedding.hpp"        /* Class for face embedding related functions */
+#include "Flash.hpp"                /* Class for external flash memory operations */
 #include <iostream>
 #include <cstring> 
 #include <random>
-#include "Flash.hpp"                /* Save registration data in the flash */
+
 
 namespace arm {
 namespace app {
@@ -69,47 +71,10 @@ void user_message_callback(char *message) {
 }
 
 
-// Only for testing 
-// std::string pickRandomName(const std::vector<std::string>& names, std::mt19937& generator) {
-//     std::uniform_int_distribution<> dist(0, names.size() - 1);
-//     return names[dist(generator)];
-// }
-// Only for testing 
-// std::vector<std::string> nameList = {
-//         "Alice", "Bob", "Charlie", "David", "Eve",
-//         "Frank", "Grace", "Hannah", "Ivy", "Jack"
-//     };
-
-
-bool last_btn1 = false; 
-
-bool run_requested_(void)
-{
-    bool ret = false; // Default to no inference
-    bool new_btn1;
-    BOARD_BUTTON_STATE btn_state1;
-
-    // Get the new button state (active low)
-    BOARD_BUTTON1_GetState(&btn_state1);
-    new_btn1 = (btn_state1 == BOARD_BUTTON_STATE_LOW); // true if button is pressed
-
-    // Edge detector - run inference on the positive edge of the button pressed signal
-    if (new_btn1 && !last_btn1) // Check for transition from not pressed to pressed
-    {
-        ret = true; // Inference requested
-    }
-
-    // Update the last button state
-    last_btn1 = new_btn1;
-
-    return ret; // Return whether inference should be run
-}
-
 void main_loop()
-{
-    // init_trigger_rx();
+{   
+    /* Trigger when a name received from asr */
     init_trigger_tx_custom(user_message_callback);
-
 
     arm::app::YoloFastestModel det_model;  /* Model wrapper object. */
     arm::app::MobileNetModel recog_model;
@@ -144,7 +109,6 @@ void main_loop()
     arm::app::ApplicationContext caseContext;
 
     arm::app::Profiler profiler{"object_detection"};
-    // arm::app::Profiler profiler{"img_class"};
     caseContext.Set<arm::app::Profiler&>("profiler", profiler);
     caseContext.Set<arm::app::Model&>("det_model", det_model);
     caseContext.Set<arm::app::Model&>("recog_model", recog_model);
@@ -171,20 +135,13 @@ void main_loop()
     std::string myName = "";
     caseContext.Set<std::string&>("my_name", myName);
 
-    // Only for testing 
-    // std::random_device rd;
-    // std::mt19937 generator(rd());
-
     bool avgEmbFlag = false;
     int loop_idx = 0;
-
     int32_t ret;
 
-       
     while(1) {
 
         alif::app::ObjectDetectionHandler(caseContext);
-
 
         // speech recognition method
         if (receivedMessage[0] != '\0') {
@@ -194,25 +151,15 @@ void main_loop()
             memset(receivedMessage, '\0', MAX_MESSAGE_LENGTH); // clear the massage buffer
         }
 
-
-        // button press model (only for testing)
-        
-        // if (run_requested_())
-        // {
-        //     caseContext.Set<bool>("buttonflag", true);
-        //     std::string randomName = pickRandomName(nameList, generator);
-        //     caseContext.Set<std::string&>("my_name", randomName);            
-        // }
-        
-
         /* extract the facial embedding and register the person */
         if (caseContext.Get<bool>("face_detected_flag") && !myName.empty()) { 
             avgEmbFlag = true;
-            info("registarion .. \n");
+            info("registration .. \n");
 
             if (avgEmbFlag && (loop_idx < 5)){
                 info("Averaging embeddings .. \n");
                 alif::app::ClassifyImageHandler(caseContext); 
+                sleep_or_wait_msec(1000); /* wait for possible pose changes */
                 loop_idx ++; 
             }else {
                 avgEmbFlag = false;
@@ -224,11 +171,9 @@ void main_loop()
 
                 faceEmbeddingCollection.PrintEmbeddings();
 
-                /* save embedding data to ospi flash  */
+                /* save embedding data to external flash  */
                 ret = flash_send(faceEmbeddingCollection);
-                info(" FLASH send status: %ld \n", ret);
                 ret = ospi_flash_read_collection(stored_collection);
-                // ret = read_collection_from_file(stored_collection);
                 stored_collection.PrintEmbeddings();
 
                 caseContext.Set<bool>("face_detected_flag", false); // Reset flag 

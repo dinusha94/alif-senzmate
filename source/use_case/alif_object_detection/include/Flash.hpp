@@ -99,13 +99,20 @@ int32_t ospi_flash_read_collection(FaceEmbeddingCollection &collection)
     // Perform the read operation from flash memory
     ret = ptrDrvFlash->ReadData(0xC0D45A40, read_buff, sizeof(read_buff)); 
 
+    // printf("aaaaaaaaaaaaaaaaaaaaaaa\n");
+
     printf("Read buf numPersons:\n");
     for (size_t i = 0; i < 2048; ++i) { 
+        // printf("id : %ld\n", i);
         printf("0x%04x, ", ((uint16_t*)read_buff)[i]);
     }
     printf("\n");
 
+    // printf("bbbbbbbbbbbbbbbbbbbbbbbbbb\n");
+
     std::copy(read_buff + 4, read_buff + 2048, read_buff);
+
+    // printf("ccccccccccccccccccccccc\n");
 
     // Wait until the flash read operation is complete
     ARM_FLASH_STATUS flash_status;
@@ -113,6 +120,8 @@ int32_t ospi_flash_read_collection(FaceEmbeddingCollection &collection)
         flash_status = ptrDrvFlash->GetStatus();
         info("busy \n");
     } while (flash_status.busy);
+
+    // printf("eeeeeeeeeeeeeeeeeeeeeeee\n");
 
     // std::vector<uint8_t> serializedData(read_buff, read_buff + sizeof(read_buff));
     std::vector<uint8_t> serializedData;
@@ -122,8 +131,12 @@ int32_t ospi_flash_read_collection(FaceEmbeddingCollection &collection)
         serializedData.push_back(static_cast<uint8_t>((value >> 8) & 0xFF));
     }
 
+    // printf("ffffffffffffffffffffffffffff\n");
+
     // Deserialize the data into a FaceEmbeddingCollection object
     collection = Deserialize(serializedData);
+
+    // printf("ggggggggggggggggggggggggggggggg\n");
  
     return ret; 
 }

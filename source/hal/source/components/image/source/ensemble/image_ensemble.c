@@ -53,6 +53,7 @@ int image_init()
     DEBUG_PRINTF("image_init(IN)\n");
     int err = camera_init(raw_image);
     DEBUG_PRINTF("image_init(), camera_init: %d\n", err);
+
 	if (err != 0) {
 		while(1) {
 		    BOARD_LED1_Control(BOARD_LED_STATE_LOW);

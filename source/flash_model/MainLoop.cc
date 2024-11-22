@@ -24,7 +24,8 @@
 #include "BufAttributes.hpp"        /* Buffer attributes to be applied */
 #include "hal.h"
 #include "delay.h"
-
+#include "uart_tracelib.h"
+#include "ospi_flash.h"
 #include <iostream>
 #include <cstring> 
 #include <random>
@@ -126,6 +127,7 @@ void main_loop()
 {
    
     init_trigger_tx();
+    uart_init();
     
     // arm::app::Wav2LetterModel model;  /* Model wrapper object. */
 
@@ -179,7 +181,78 @@ void main_loop()
 
     int i = 0;
 
+    int32_t ret;
+    
+    const uint32_t baseAddress = 0xC0000000;
+    const size_t chunkSize = 16; // Sender sends 16-byte chunks
+    const size_t totalBytes = 16; // Total 13 MB
+
+    uint32_t currentAddress = baseAddress; // Start at the base address
+
+    size_t fullChunks = totalBytes / chunkSize; // 851,968 chunks
+    size_t remainingBytes = totalBytes % chunkSize; // 0 bytes (no leftover)
+    
     while(1){
+
+        uint8_t receivedArray[chunkSize]; // Buffer for the 16-byte chunk
+
+        // Process full 16-byte chunks
+        for (size_t i = 0; i < fullChunks; ++i) {
+            // Receive one 16-byte chunk
+            for (size_t k = 0; k < chunkSize; ++k) {
+                receivedArray[k] = uart_getchar(); // Receive byte
+                info("received : %d \n", receivedArray[k]);
+                currentAddress++;                 // Increment address
+            }
+
+            if (i==0){
+                ret = ptrDrvFlash->ProgramData(baseAddress, receivedArray, chunkSize);
+            }else{
+                ret = ptrDrvFlash->ProgramData(currentAddress - 16, receivedArray, chunkSize);
+            }
+
+            ARM_FLASH_STATUS flash_status;
+            do {
+                flash_status = ptrDrvFlash->GetStatus();
+            } while (flash_status.busy);
+
+            // Send acknowledgment for this chunk
+            info("next_chunk\n");
+        }
+
+    
+        if (remainingBytes != 0) {
+            uint8_t remainingBytesArray[remainingBytes];
+
+            for (size_t k = 0; k < remainingBytes; ++k) {
+                remainingBytesArray[k] = uart_getchar(); // Receive byte
+            }
+
+            ret = ptrDrvFlash->ProgramData(currentAddress, remainingBytesArray, remainingBytes);
+
+            ARM_FLASH_STATUS flash_status;
+            do {
+                flash_status = ptrDrvFlash->GetStatus();
+            } while (flash_status.busy);
+
+            
+        }
+
+        info("done\n");
+
+
+        /* Read back the data from flash to check */
+        uint8_t read_buff[totalBytes];
+
+        ret = ptrDrvFlash->ReadData(baseAddress, read_buff, sizeof(read_buff)); 
+
+        for (size_t k = 0; k < totalBytes; ++k) {
+                info("stored : %d \n", read_buff[k]);
+            }
+
+        info("finish\n");
+
+        break;
 
     // button press mode    
     if (run_requested_())
