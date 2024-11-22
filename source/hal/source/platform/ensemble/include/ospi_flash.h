@@ -17,6 +17,7 @@
 extern "C" {
 #endif
 
+
 /* Use this in my custom flash driver */
 extern ARM_DRIVER_FLASH* const ptrDrvFlash;
 
@@ -30,7 +31,6 @@ int32_t ospi_flash_init(void);
  * @brief Initialize OSPI driver and flash chip. program data mode.
  *
  */
-// int32_t ospi_flash_send(void);
 int32_t ospi_flash_send(void);
 
 /**

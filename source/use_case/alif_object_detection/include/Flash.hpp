@@ -1,6 +1,17 @@
 #ifndef FLASH_H
 #define FLASH_H
 
+/**************************************************************************//**
+ * @file     Flash.hpp
+ * @author   Dinusha Nuwan
+ * @email    dinusha@senzmate.com
+ * @version  V1.0.0
+ * @date     22-11-2024
+ * @brief    Class for external flash memory operations 
+ * @bug      None.
+ * @Note     None
+ ******************************************************************************/
+
 #include <vector>
 #include <string>
 #include <cstring>  // for memcpy
@@ -99,8 +110,6 @@ int32_t ospi_flash_read_collection(FaceEmbeddingCollection &collection)
     // Perform the read operation from flash memory
     ret = ptrDrvFlash->ReadData(0xC0D45A40, read_buff, sizeof(read_buff)); 
 
-    // printf("aaaaaaaaaaaaaaaaaaaaaaa\n");
-
     printf("Read buf numPersons:\n");
     for (size_t i = 0; i < 2048; ++i) { 
         // printf("id : %ld\n", i);
@@ -108,11 +117,7 @@ int32_t ospi_flash_read_collection(FaceEmbeddingCollection &collection)
     }
     printf("\n");
 
-    // printf("bbbbbbbbbbbbbbbbbbbbbbbbbb\n");
-
     std::copy(read_buff + 4, read_buff + 2048, read_buff);
-
-    // printf("ccccccccccccccccccccccc\n");
 
     // Wait until the flash read operation is complete
     ARM_FLASH_STATUS flash_status;
@@ -121,9 +126,6 @@ int32_t ospi_flash_read_collection(FaceEmbeddingCollection &collection)
         info("busy \n");
     } while (flash_status.busy);
 
-    // printf("eeeeeeeeeeeeeeeeeeeeeeee\n");
-
-    // std::vector<uint8_t> serializedData(read_buff, read_buff + sizeof(read_buff));
     std::vector<uint8_t> serializedData;
     serializedData.reserve(4096);  // Reserve space for 1024 uint16_t entries
     for (uint16_t value : read_buff) {
@@ -131,12 +133,8 @@ int32_t ospi_flash_read_collection(FaceEmbeddingCollection &collection)
         serializedData.push_back(static_cast<uint8_t>((value >> 8) & 0xFF));
     }
 
-    // printf("ffffffffffffffffffffffffffff\n");
-
     // Deserialize the data into a FaceEmbeddingCollection object
     collection = Deserialize(serializedData);
-
-    // printf("ggggggggggggggggggggggggggggggg\n");
  
     return ret; 
 }
@@ -168,11 +166,9 @@ int32_t read_collection_from_file(FaceEmbeddingCollection &collection)
         info("busy \n");
     } while (flash_status.busy);
 
-    // std::vector<uint8_t> serializedData(read_buff, read_buff + sizeof(read_buff));
     std::vector<uint8_t> serializedData;
     serializedData.reserve(4096);  // Reserve space for 1024 uint16_t entries
 
-    // for (uint16_t value : read_buff) {
     for (size_t i = 0; i < 2048; ++i) {
         uint16_t value = read_buff[i];
         serializedData.push_back(static_cast<uint8_t>(value & 0xFF));

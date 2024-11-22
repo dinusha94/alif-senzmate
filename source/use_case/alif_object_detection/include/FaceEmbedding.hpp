@@ -1,6 +1,17 @@
 #ifndef FACE_EMBEDDING_H
 #define FACE_EMBEDDING_H
 
+/**************************************************************************//**
+ * @file     FaceEmbedding.hpp
+ * @author   Dinusha Nuwan
+ * @email    dinusha@senzmate.com
+ * @version  V1.0.0
+ * @date     22-11-2024
+ * @brief    Class for face embedding related functions
+ * @bug      None.
+ * @Note     None
+ ******************************************************************************/
+
 #include <string>
 #include <vector>
 #include <cstdint>

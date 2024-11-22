@@ -216,21 +216,14 @@ int32_t ospi_flash_init()
 }
 
 
-int32_t ospi_flash_send()
+
+int32_t ospi_flash_send() 
 {
     int32_t ret;
-    uint32_t index;
-    uint16_t write_buff[1024];
-
-   for (index = 0; index < 1024; index++)
-    {
-        write_buff[index] = 1654;
-    }
-
-    // ret = ptrDrvFlash->EraseChip();
+    uint8_t write_buff[16] = {40, 0, 0, 0, 84, 70, 76, 51, 0, 0, 0, 0, 0, 0, 0, 0};
 
     // Address 0x00,  subsector 0 
-    ret = ptrDrvFlash->ProgramData(0xC0000000, write_buff, 1024);
+    ret = ptrDrvFlash->ProgramData(0xC0000000, write_buff, 16);
 
     ARM_FLASH_STATUS flash_status;
     do {
@@ -246,9 +239,9 @@ int32_t ospi_flash_read()
 {
     int32_t ret;
     uint32_t count = 0, iter = 0;
-    uint16_t read_buff[1024];
+    uint8_t read_buff[32];
 
-    ret = ptrDrvFlash->ReadData(0xC0000000, read_buff, 1024);
+    ret = ptrDrvFlash->ReadData(0xC0000000, read_buff, 32);
 
     ARM_FLASH_STATUS flash_status;
     do {
@@ -257,8 +250,8 @@ int32_t ospi_flash_read()
     } while (flash_status.busy);
 
     printf("Data in read_buff:\n");
-    for (int i = 0; i < 1024; ++i) {
-        printf("0x%04X ", read_buff[i]);  // %04X prints 4-digit hexadecimal with leading zeros
+    for (int i = 0; i < 32; ++i) {
+        printf("%d ", read_buff[i]);  // %04X prints 4-digit hexadecimal with leading zeros
         if ((i + 1) % 8 == 0) {
             printf("\n");  // Newline every 8 elements
         }
@@ -266,14 +259,14 @@ int32_t ospi_flash_read()
     }
     printf("\n");
 
-    while (iter < 1024)
-    {
-        if (read_buff[iter] != 1654)
-            count++;
-        iter++;
-    }
+    // while (iter < 1024)
+    // {
+    //     if (read_buff[iter] != 1654)
+    //         count++;
+    //     iter++;
+    // }
 
-    printf("Total errors after reading data written to flash = %d\n", count);
+    // printf("Total errors after reading data written to flash = %d\n", count);
 
     return ret;
 }

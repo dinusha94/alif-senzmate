@@ -26,6 +26,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+/**************************************************************************//**
+ * @author   Dinusha Nuwan
+ * @email    dinusha@senzmate.com
+ * @version  V1.0.0
+ * @date     22-11-2024
+ * @brief    None. 
+ * @bug      None.
+ * @Note     Customized to use with live microphone data
+ ******************************************************************************/
+
 #include "UseCaseHandler.hpp"
 
 #include "YoloFastestModel.hpp"
