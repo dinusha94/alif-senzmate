@@ -128,13 +128,7 @@ void main_loop()
 {
    
     init_trigger_tx();
-
-    // for (int index = 0; index < 1024; index++)
-    //     {
-    //         write_buff[index] = 1654;
-    //     }
-
-    // uart_init();
+    uart_init();
     
     // arm::app::Wav2LetterModel model;  /* Model wrapper object. */
 
@@ -187,53 +181,44 @@ void main_loop()
     // hal_get_audio_data(audio_inf_kws + AUDIO_SAMPLES_KWS, AUDIO_STRIDE_KWS);    
 
     int i = 0;
+    bool start = true;
     int32_t ret;
     
     const uint32_t baseAddress = 0xC0000000;
-    const size_t chunkSize = 16; // Sender sends 16-byte chunks
-    const size_t totalBytes = 16; // Total 13 MB
+    const size_t chunkSize = 16;
+    size_t totalBytes = 0;
 
     uint32_t currentAddress = baseAddress; // Start at the base address
 
-    size_t fullChunks = totalBytes / chunkSize; // 851,968 chunks
-    size_t remainingBytes = totalBytes % chunkSize; // 0 bytes (no leftover)    
+    uint8_t receivedArray[chunkSize]; // hold 1KB data if chunkSize is 1024
+
+    uint32_t buffer_len = static_cast<uint32_t>(sizeof(receivedArray));
+
     
     while(1){
-
-        // Process full 16-byte chunks
-        for (size_t i = 0; i < fullChunks; ++i) {
-
-            uint8_t receivedArray[chunkSize] = {0}; // = {40, 54, 30, 0, 84, 70, 76, 51, 0, 0, 7, 8, 8, 0, 0, 10}; 
-
-            // Receive one 16-byte chunk
-            for (size_t k = 0; k < chunkSize; ++k) {
-                receivedArray[k] = uart_getchar(); // Receive byte
-                currentAddress++;                 // Increment address
-            }
-
-            // if (i==0){
-                ret = flash_send_model(baseAddress, receivedArray, sizeof(receivedArray));
-            // }else{
-            //     ret = flash_send_model(currentAddress, receivedArray, sizeof(receivedArray));
-            // }
-
-            // Send acknowledgment for this chunk
-            info("next_chunk\n");
+            
+        for (size_t k = 0; k < chunkSize; ++k) {
+            receivedArray[k] =  uart_getchar(); // Receive byte              
         }
 
-        if (remainingBytes != 0) {
+         for (int i = 0; i < chunkSize; ++i) {
+            printf("%d ,",receivedArray[i]);}
 
-            uint8_t remainingBytesArray[remainingBytes];
+        if (start){
+            ret = flash_send_model(baseAddress, receivedArray, buffer_len);
+            start = false;  
+        }else if (!start){
+            ret = flash_send_model(currentAddress, receivedArray, buffer_len);
+        }      
 
-            for (size_t k = 0; k < remainingBytes; ++k) {
-                remainingBytesArray[k] = uart_getchar(); // Receive byte
-            }     
+        // info("send ret: %ld \n", ret);
 
-            ret = flash_send_model(currentAddress, remainingBytesArray, sizeof(remainingBytesArray));       
-        }
+        // read the latest data saved
+        ret = flash_read_model(currentAddress, 32);
 
+        currentAddress = currentAddress + buffer_len;
 
-        ret = flash_read_model();
+        info("next_chunk at :  0x%8X \n", currentAddress);
 
         break;
 

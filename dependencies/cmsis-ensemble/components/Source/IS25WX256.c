@@ -634,7 +634,6 @@ static int32_t ARM_Flash_ReadData (uint32_t addr, void *data, uint32_t cnt)
 
     while(cnt)
     {
-        printf("read %ld \n", cnt);
         status = ControlSlaveSelect(true);
 
         if (status != ARM_DRIVER_OK)
@@ -668,8 +667,6 @@ static int32_t ARM_Flash_ReadData (uint32_t addr, void *data, uint32_t cnt)
              __WFE();
         }
 
-        printf("kk  \n");
-
         if (!(issi_event_flag & ARM_OSPI_EVENT_TRANSFER_COMPLETE))
         {
             ControlSlaveSelect(false);
@@ -681,7 +678,6 @@ static int32_t ARM_Flash_ReadData (uint32_t addr, void *data, uint32_t cnt)
         issi_event_flag = 0;
 
         status = ControlSlaveSelect(false);
-        printf("cc  \n");
 
         if (status != ARM_DRIVER_OK)
         {
@@ -726,7 +722,6 @@ static int32_t ARM_Flash_ProgramData (uint32_t addr, const void *data, uint32_t 
 
     while (cnt)
     {
-        printf("CNT : %ld \n", cnt);
         ISSI_FlashStatus.busy  = 1U;
         ISSI_FlashStatus.error = 0U;
 
@@ -857,8 +852,6 @@ static int32_t ARM_Flash_ProgramData (uint32_t addr, const void *data, uint32_t 
     {
         return ARM_DRIVER_ERROR;
     }
-
-    printf("Heree .... \n");
 
     /* Number of data items programmed */
     status = (int32_t)num;
