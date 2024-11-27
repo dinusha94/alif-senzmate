@@ -108,16 +108,7 @@ int32_t ospi_flash_read_collection(FaceEmbeddingCollection &collection)
     int32_t ret;
     uint16_t read_buff[2048];
     // Perform the read operation from flash memory
-    ret = ptrDrvFlash->ReadData(0xC0D45A40, read_buff, sizeof(read_buff)); 
-
-    printf("Read buf numPersons:\n");
-    for (size_t i = 0; i < 2048; ++i) { 
-        // printf("id : %ld\n", i);
-        printf("0x%04x, ", ((uint16_t*)read_buff)[i]);
-    }
-    printf("\n");
-
-    std::copy(read_buff + 4, read_buff + 2048, read_buff);
+    ret = ptrDrvFlash->ReadData(0xC0D45A40, read_buff, 2048); 
 
     // Wait until the flash read operation is complete
     ARM_FLASH_STATUS flash_status;
@@ -125,6 +116,14 @@ int32_t ospi_flash_read_collection(FaceEmbeddingCollection &collection)
         flash_status = ptrDrvFlash->GetStatus();
         info("busy \n");
     } while (flash_status.busy);
+
+    // std::copy(read_buff + 4, read_buff + 2048, read_buff);
+
+    printf("Read buf numPersons:\n");
+    for (size_t i = 0; i < 2048; ++i) { 
+        printf("0x%04x, ", read_buff[i]);
+    }
+    printf("\n");
 
     std::vector<uint8_t> serializedData;
     serializedData.reserve(4096);  // Reserve space for 1024 uint16_t entries
@@ -141,7 +140,7 @@ int32_t ospi_flash_read_collection(FaceEmbeddingCollection &collection)
 
 int32_t read_collection_from_file(FaceEmbeddingCollection &collection)
 {
-    int32_t ret;
+    int32_t ret = 0;
     uint16_t* read_buff;
 
     static uint16_t buffer[2048];  // Local buffer for flash data
@@ -157,7 +156,7 @@ int32_t read_collection_from_file(FaceEmbeddingCollection &collection)
     }
     printf("\n");
 
-    std::copy(read_buff + 4, read_buff + 2048, read_buff);
+    // std::copy(read_buff + 4, read_buff + 2048, read_buff);
 
     // Wait until the flash read operation is complete
     ARM_FLASH_STATUS flash_status;

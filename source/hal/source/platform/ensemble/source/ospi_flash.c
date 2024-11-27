@@ -238,10 +238,10 @@ int32_t ospi_flash_send()
 int32_t ospi_flash_read()
 {
     int32_t ret;
-    uint32_t count = 0, iter = 0;
-    uint8_t read_buff[32];
+    // uint32_t count = 0, iter = 0;
+    uint16_t read_buff[512];
 
-    ret = ptrDrvFlash->ReadData(0xC0000000, read_buff, 32);
+    ret = ptrDrvFlash->ReadData(0xC0000000, read_buff, 512);
 
     ARM_FLASH_STATUS flash_status;
     do {
@@ -250,8 +250,8 @@ int32_t ospi_flash_read()
     } while (flash_status.busy);
 
     printf("Data in read_buff:\n");
-    for (int i = 0; i < 32; ++i) {
-        printf("%d ", read_buff[i]);  // %04X prints 4-digit hexadecimal with leading zeros
+    for (int i = 0; i < 512; ++i) {
+       printf("0x%04x, ",  read_buff[i]);
         if ((i + 1) % 8 == 0) {
             printf("\n");  // Newline every 8 elements
         }

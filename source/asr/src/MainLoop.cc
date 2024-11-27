@@ -124,6 +124,13 @@ static bool VerifyTensorDimensions(const arm::app::Model& model);
 #define AUDIO_STRIDE_KWS 8000 
 static int16_t audio_inf_kws[AUDIO_SAMPLES_KWS];
 
+void convert_uint8_to_uint16(const uint8_t *input_buffer, size_t input_size, uint16_t *output_buffer) {
+    size_t output_size = input_size / 2;
+    for (size_t i = 0; i < output_size; i++) {
+        output_buffer[i] = (input_buffer[2 * i] << 8) | input_buffer[2 * i + 1];
+    }
+}
+
 void main_loop()
 {
    
