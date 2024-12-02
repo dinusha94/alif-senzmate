@@ -58,6 +58,8 @@ namespace app {
      **/
     bool ClassifyImageHandler(arm::app::ApplicationContext& ctx);
 
+    std::string ClassifyAudioHandler(arm::app::ApplicationContext& ctx, uint32_t clipIndex, bool runAll);
+
 } /* namespace app */
 } /* namespace alif */
 

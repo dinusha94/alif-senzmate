@@ -39,7 +39,7 @@ MEMORY
   ITCM  (rwx) : ORIGIN = 0x01000000, LENGTH = 0x00040000
   DTCM  (rwx) : ORIGIN = 0x20000000, LENGTH = 0x00100000
   SRAM0 (rwx) : ORIGIN = 0x02000000, LENGTH = 0x00400000
-  SRAM1 (rwx) : ORIGIN = 0x08000000, LENGTH = 0x00280000
+  SRAM1 (rwx) : ORIGIN = 0x08000000, LENGTH = 0x00280000 
   MRAM  (rx)  : ORIGIN = __ROM_BASE, LENGTH = __ROM_SIZE
   OSPI_FLASH (rx) : ORIGIN = __OSPI_FLASH_BASE, LENGTH = __OSPI_FLASH_SIZE
 }
@@ -147,15 +147,18 @@ SECTIONS
 
   .bss.sram0 (NOLOAD) : ALIGN(8)
   {
+    * (.bss.NoInit.activation_buf_sram) /* 4MB */
+  } > SRAM0
+
+  
+  .bss.sram1 (NOLOAD) : ALIGN(8)
+  {
     * (.bss.camera_frame_buf)              /* Camera Frame Buffer */
     * (.bss.camera_frame_bayer_to_rgb_buf) /* (Optional) Camera Frame Buffer for Bayer to RGB Convertion.*/
     * (.bss.lcd_image_buf)
-  } > SRAM0
 
-  .bss.sram1 (NOLOAD) : ALIGN(8)
-  {
-    * (.bss.NoInit.activation_buf_sram) /* 2MB */
   } > SRAM1
+  
 
   .bss.itcm (NOLOAD) : ALIGN(8)
   {

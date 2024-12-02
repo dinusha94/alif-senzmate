@@ -17,10 +17,10 @@
 # Append the API to use for this use case
 list(APPEND ${use_case}_API_LIST "asr")
 
-set_input_file_path_user_option(".wav" ${use_case})
+# set_input_file_path_user_option(".wav" ${use_case})
 
 USER_OPTION(${use_case}_MODEL_IN_EXT_FLASH "Run model from external flash"
-    OFF
+    ON
     BOOL)
 
 USER_OPTION(${use_case}_LABELS_TXT_FILE "Labels' txt file for the chosen model."
@@ -56,13 +56,13 @@ USER_OPTION(${use_case}_MODEL_SCORE_THRESHOLD "Specify the score threshold [0.0,
     STRING)
 
 # Generate input files
-generate_audio_code(${${use_case}_FILE_PATH} ${SRC_GEN_DIR} ${INC_GEN_DIR}
-    ${${use_case}_AUDIO_RATE}
-    ${${use_case}_AUDIO_MONO}
-    ${${use_case}_AUDIO_OFFSET}
-    ${${use_case}_AUDIO_DURATION}
-    ${${use_case}_AUDIO_RES_TYPE}
-    ${${use_case}_AUDIO_MIN_SAMPLES})
+# generate_audio_code(${${use_case}_FILE_PATH} ${SRC_GEN_DIR} ${INC_GEN_DIR}
+#     ${${use_case}_AUDIO_RATE}
+#     ${${use_case}_AUDIO_MONO}
+#     ${${use_case}_AUDIO_OFFSET}
+#     ${${use_case}_AUDIO_DURATION}
+#     ${${use_case}_AUDIO_RES_TYPE}
+#     ${${use_case}_AUDIO_MIN_SAMPLES})
 
 # Generate labels file
 set(${use_case}_LABELS_CPP_FILE Labels)
@@ -76,10 +76,12 @@ generate_labels_code(
 
 USER_OPTION(${use_case}_ACTIVATION_BUF_SZ "Activation buffer size for the chosen model"
     0x00200000
+    # 0x00020000
+    # 0x00100000
     STRING)
 
 if (ETHOS_U_NPU_ENABLED)
-    set(DEFAULT_MODEL_PATH      ${DEFAULT_MODEL_DIR}/tiny_wav2letter_pruned_int8_vela_${ETHOS_U_NPU_CONFIG_ID}.tflite)
+    set(DEFAULT_MODEL_PATH      ${DEFAULT_MODEL_DIR}/wav2letter_pruned_int8_vela_${ETHOS_U_NPU_CONFIG_ID}.tflite)
 else()
     set(DEFAULT_MODEL_PATH      ${DEFAULT_MODEL_DIR}/wav2letter_pruned_int8.tflite)
 endif()

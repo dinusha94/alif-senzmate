@@ -20,7 +20,7 @@
 #include "AsrResult.hpp"
 #include "AudioUtils.hpp"
 #include "ImageUtils.hpp"
-#include "InputFiles.hpp"
+// #include "InputFiles.hpp"
 #include "OutputDecode.hpp"
 #include "UseCaseCommonUtils.hpp"
 #include "Wav2LetterModel.hpp"
@@ -37,6 +37,8 @@
 extern uint32_t m55_comms_handle;
 m55_data_payload_t mhu_data;
 
+#define AUDIO_SAMPLES_KWS 32000 
+static int16_t audio_inf_kws[AUDIO_SAMPLES_KWS];
 
 namespace arm {
 namespace app {
@@ -117,21 +119,34 @@ namespace app {
                                                     Wav2LetterModel::ms_outputRowsIdx);
 
         // Retrieve the audio_inf pointer from the context
-        auto audio_inf_vector = ctx.Get<std::vector<int16_t>>("audio_inf_vector");
-        const int16_t* audio_inf = audio_inf_vector.data(); 
+        // auto audio_inf_vector = ctx.Get<std::vector<int16_t>>("audio_inf_vector");
+        // const int16_t* audio_inf = audio_inf_vector.data(); 
 
-        uint32_t audioArrSize = 37547; // 16000 + 8000;
+        uint32_t audioArrSize = AUDIO_SAMPLES_KWS; // 16000 + 8000;
+
+        static bool audio_inited;
+
+        if (!audio_inited) {
+            int err = hal_audio_init(16000);  // Initialize audio at 16,000 Hz
+            if (err) {
+                info("hal_audio_init failed with error: %d\n", err);
+            }
+            audio_inited = true;
+        }
        
         /* Loop to process audio clips. */
         do {
            
             /* Get the current audio buffer and respective size. */
-            const int16_t* audioArr     =  audio_inf;                
+            hal_get_audio_data(audio_inf_kws, AUDIO_SAMPLES_KWS); // recorded audio data in mono
 
-            if (!audioArr) {
-                printf_err("Invalid audio array pointer.\n");
-                return false;
+            // Wait until the buffer is fully populated
+            int err = hal_wait_for_audio();
+            if (err) {
+                info("hal_wait_for_audio failed with error: %d\n", err);
             }
+
+            hal_audio_preprocessing(audio_inf_kws, AUDIO_SAMPLES_KWS);             
 
             /* Audio clip needs enough samples to produce at least 1 MFCC feature. */
             if (audioArrSize < mfccFrameLen) {
@@ -142,7 +157,7 @@ namespace app {
 
             /* Creating a sliding window through the whole audio clip. */
             auto audioDataSlider = audio::FractionalSlidingWindow<const int16_t>(
-                audioArr, audioArrSize, audioDataWindowLen, audioDataWindowStride);
+                audio_inf_kws, audioArrSize, audioDataWindowLen, audioDataWindowStride);
 
             /* Declare a container for final results. */
             std::vector<asr::AsrResult> finalResults;

@@ -30,7 +30,13 @@ add_library(${OBJECT_DETECTION_API_TARGET} STATIC
         src/DetectorPostProcessing.cc
         src/YoloFastestModel.cc
         src/MobileNetModel.cc
-        src/ImgClassProcessing.cc)
+        src/ImgClassProcessing.cc
+        src/Wav2LetterPreprocess.cc
+        src/Wav2LetterPostprocess.cc
+        src/Wav2LetterMfcc.cc
+        src/AsrClassifier.cc
+        src/OutputDecode.cc
+        src/Wav2LetterModel.cc)
 
 # set(IMG_CLASS_API_TARGET img_class_api)  # Declare the target name
 # add_library(${IMG_CLASS_API_TARGET} STATIC

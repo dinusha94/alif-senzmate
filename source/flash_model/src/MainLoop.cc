@@ -87,7 +87,7 @@ void main_loop()
     int32_t ret;
     
     const uint32_t baseAddress = 0xC0000000;
-    const size_t chunkSize = 16;
+    const size_t chunkSize = 32;
     size_t totalBytes = 0;
 
     uint32_t currentAddress = baseAddress; // Start at the base address
@@ -120,10 +120,10 @@ void main_loop()
         // printf("\n");
 
         if (start){
-            ret = flash_send_model(baseAddress, output_buffer, 8);
+            ret = flash_send_model(baseAddress, output_buffer, buffer_len);
             start = false;  
         }else if (!start){
-            ret = flash_send_model(currentAddress, output_buffer, 8);
+            ret = flash_send_model(currentAddress, output_buffer, buffer_len);
         }
 
         if (totalBytes > 13916736){
@@ -134,7 +134,14 @@ void main_loop()
         info("return write status at 0x%8X :%d \n", currentAddress, ret);
 
         currentAddress = currentAddress + sizeof(output_buffer);
+        
+
+        // ret = ospi_flash_read();
+        // info("return read status:%d \n", ret);
+
         info("next_chunk at :  0x%8X \n", currentAddress);
+
+        // break;
     }
     
     // ret = ospi_flash_read();

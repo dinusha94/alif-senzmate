@@ -42,6 +42,10 @@
 #include <cstring> 
 #include <random>
 
+#include "Labels.hpp"                /* For label strings. */
+#include "Wav2LetterModel.hpp"       /* Model class for running inference. */
+#include "AsrClassifier.hpp"         /* Classifier. */
+
 
 namespace arm {
 namespace app {
@@ -55,40 +59,80 @@ namespace app {
         extern uint8_t* GetModelPointer();
         extern size_t GetModelLen();
     } // namespace object_recognition
+
+    namespace asr {
+        extern uint8_t* GetModelPointer();
+        extern size_t GetModelLen();
+    } /* namespace asr */
+
     static uint8_t tensorArena[ACTIVATION_BUF_SZ] ACTIVATION_BUF_ATTRIBUTE;
 } /* namespace app */
 } /* namespace arm */
 
 // Global variable to hold the received message
-const int MAX_MESSAGE_LENGTH = 256;
-char receivedMessage[MAX_MESSAGE_LENGTH];
+// const int MAX_MESSAGE_LENGTH = 256;
+// char receivedMessage[MAX_MESSAGE_LENGTH];
 
 /* callback function to handle name strings received from speech recognition process*/
-void user_message_callback(char *message) {
-    strncpy(receivedMessage, message, MAX_MESSAGE_LENGTH - 1);
-    receivedMessage[MAX_MESSAGE_LENGTH - 1] = '\0'; // Ensure null-termination
-    info("Message received in user callback: %s\n", message);
-}
+// void user_message_callback(char *message) {
+//     strncpy(receivedMessage, message, MAX_MESSAGE_LENGTH - 1);
+//     receivedMessage[MAX_MESSAGE_LENGTH - 1] = '\0'; // Ensure null-termination
+//     info("Message received in user callback: %s\n", message);
+// }
 
+bool last_btn1 = false; 
+
+bool run_requested_(void)
+{
+    bool ret = false; // Default to no inference
+    bool new_btn1;
+    BOARD_BUTTON_STATE btn_state1;
+
+    // Get the new button state (active low)
+    BOARD_BUTTON1_GetState(&btn_state1);
+    new_btn1 = (btn_state1 == BOARD_BUTTON_STATE_LOW); // true if button is pressed
+
+    // Edge detector - run inference on the positive edge of the button pressed signal
+    if (new_btn1 && !last_btn1) // Check for transition from not pressed to pressed
+    {
+        ret = true; // Inference requested
+    }
+
+    // Update the last button state
+    last_btn1 = new_btn1;
+
+    return ret; // Return whether inference should be run
+}
 
 void main_loop()
 {   
     /* Trigger when a name received from asr */
-    init_trigger_tx_custom(user_message_callback);
+    // init_trigger_tx_custom(user_message_callback);
 
     arm::app::YoloFastestModel det_model;  /* Model wrapper object. */
     arm::app::MobileNetModel recog_model;
+    arm::app::Wav2LetterModel asr_model;
     
     /* No need to initiate Classification since we use single camera*/
     if (!alif::app::ObjectDetectionInit()) {
         printf_err("Failed to initialise use case handler\n");
     }
 
+    /* Load asr model */
+    if (!asr_model.Init(arm::app::tensorArena,
+                    sizeof(arm::app::tensorArena),
+                    arm::app::asr::GetModelPointer(),
+                    arm::app::asr::GetModelLen())) {
+        printf_err("Failed to initialise model\n");
+        return;
+    } 
+
     /* Load the detection model. */
     if (!det_model.Init(arm::app::tensorArena,
                     sizeof(arm::app::tensorArena),
                     arm::app::object_detection::GetModelPointer(),
-                    arm::app::object_detection::GetModelLen())) {
+                    arm::app::object_detection::GetModelLen(),
+                    asr_model.GetAllocator())) {
         printf_err("Failed to initialise model\n");
         return;
     }
@@ -99,7 +143,7 @@ void main_loop()
                     sizeof(arm::app::tensorArena),
                     arm::app::img_class::GetModelPointer(),
                     arm::app::img_class::GetModelLen(),
-                    det_model.GetAllocator())) {
+                    asr_model.GetAllocator())) {
         printf_err("Failed to initialise recognition model\n");
         return;
     }
@@ -112,7 +156,20 @@ void main_loop()
     caseContext.Set<arm::app::Profiler&>("profiler", profiler);
     caseContext.Set<arm::app::Model&>("det_model", det_model);
     caseContext.Set<arm::app::Model&>("recog_model", recog_model);
-     
+
+  
+    std::vector <std::string> labels;
+    GetLabelsVector(labels);
+    arm::app::AsrClassifier classifier;  /* Classifier wrapper object. */
+
+    caseContext.Set<arm::app::Model&>("asr_model", asr_model);
+    caseContext.Set<uint32_t>("frameLength", arm::app::asr::g_FrameLength);
+    caseContext.Set<uint32_t>("frameStride", arm::app::asr::g_FrameStride);
+    caseContext.Set<float>("scoreThreshold", arm::app::asr::g_ScoreThreshold);  /* Score threshold. */
+    caseContext.Set<uint32_t>("ctxLen", arm::app::asr::g_ctxLen);  /* Left and right context length (MFCC feat vectors). */
+    caseContext.Set<const std::vector <std::string>&>("labels", labels);
+    caseContext.Set<arm::app::AsrClassifier&>("classifier", classifier);
+
     // Dynamically allocate the vector on the heap to hold CroppedImageData
     auto croppedImages = std::make_shared<std::vector<alif::app::CroppedImageData>>();
     caseContext.Set<std::shared_ptr<std::vector<alif::app::CroppedImageData>>>("cropped_images", croppedImages);
@@ -133,7 +190,8 @@ void main_loop()
 
     // Hardcoded name
     std::string myName = "";
-    caseContext.Set<std::string&>("my_name", myName);
+    // caseContext.Set<std::string&>("my_name", myName);
+    caseContext.Set<std::string>("my_name", "");
 
     bool avgEmbFlag = false;
     int loop_idx = 0;
@@ -144,12 +202,24 @@ void main_loop()
         alif::app::ObjectDetectionHandler(caseContext);
 
         // speech recognition method
-        if (receivedMessage[0] != '\0') {
-            info("Name received: %s\n", receivedMessage);
-            myName = receivedMessage;
-            caseContext.Set<std::string&>("my_name", myName);
-            memset(receivedMessage, '\0', MAX_MESSAGE_LENGTH); // clear the massage buffer
+        // if (receivedMessage[0] != '\0') {
+        //     info("Name received: %s\n", receivedMessage);
+        //     myName = receivedMessage;
+        //     caseContext.Set<std::string&>("my_name", myName);
+        //     memset(receivedMessage, '\0', MAX_MESSAGE_LENGTH); // clear the massage buffer
+        // }
+
+        // button press mode    
+        if (run_requested_())
+        {   
+            myName = alif::app::ClassifyAudioHandler(
+                                    caseContext,
+                                    1,
+                                    false);
+                                    
+            info("recognition Name : %s \n", myName.c_str());
         }
+
 
         /* extract the facial embedding and register the person */
         if (caseContext.Get<bool>("face_detected_flag") && !myName.empty()) { 
@@ -172,16 +242,24 @@ void main_loop()
                 faceEmbeddingCollection.PrintEmbeddings();
 
                 /* save embedding data to external flash  */
-                ret = flash_send(faceEmbeddingCollection);
-                ret = ospi_flash_read_collection(stored_collection);
-                stored_collection.PrintEmbeddings();
+                // ret = flash_send(faceEmbeddingCollection);
+                // ret = ospi_flash_read_collection(stored_collection);
+                // stored_collection.PrintEmbeddings();
+
+                info("aaaa  .. \n");
 
                 caseContext.Set<bool>("face_detected_flag", false); // Reset flag 
+
+                info("bbbbb  .. \n");
+
                 myName.clear();
-                caseContext.Set<std::string&>("my_name", myName);
+                info("ddddddd .. \n");
+
+                caseContext.Set<std::string>("my_name", myName);
+                info("ccccc .. \n");
             }
         }      
         
-    };
+    }
     
 }

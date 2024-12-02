@@ -16,7 +16,8 @@
  */
 #include "UseCaseCommonUtils.hpp"
 #include "ImageUtils.hpp"
-#include "InputFiles.hpp"
+// #include "InputFiles.hpp"
+#define NUMBER_OF_FILES   0
 #include "log_macros.h"
 
 #include <cinttypes>
@@ -116,9 +117,9 @@ namespace app {
 
     bool RunInference(arm::app::Model& model, Profiler& profiler)
     {
-        // profiler.StartProfiling("Inference");
+        profiler.StartProfiling("Inference");
         bool runInf = model.RunInference();
-        // profiler.StopProfiling();
+        profiler.StopProfiling();
 
         return runInf;
     }
