@@ -90,8 +90,14 @@ int32_t flash_send(const FaceEmbeddingCollection &data)
     uint16_t write_buff[2048] = {0};
     std::memcpy(write_buff, serializedData.data(), serializedData.size());
 
+    printf("Write buf numPersons:\n");
+    for (size_t i = 0; i < 2048; ++i) { 
+        printf("0x%04x, ", write_buff[i]);
+    }
+    printf("\n");
+
     // Write the serialized data to flash memory
-    ret = ptrDrvFlash->ProgramData(0xC0D5CF80, write_buff, serializedData.size());
+    ret = ptrDrvFlash->ProgramData(0xC101BC80, write_buff, serializedData.size());
 
     // Wait for flash operation to complete
     ARM_FLASH_STATUS flash_status;
@@ -108,7 +114,7 @@ int32_t ospi_flash_read_collection(FaceEmbeddingCollection &collection)
     int32_t ret;
     uint16_t read_buff[2048];
     // Perform the read operation from flash memory
-    ret = ptrDrvFlash->ReadData(0xC0D5CF80, read_buff, 2048); 
+    ret = ptrDrvFlash->ReadData(0xC101BC80, read_buff, 2048); 
 
     // Wait until the flash read operation is complete
     ARM_FLASH_STATUS flash_status;
@@ -151,19 +157,12 @@ int32_t read_collection_from_file(FaceEmbeddingCollection &collection)
     
     read_buff = buffer; 
 
-    for (size_t i = 0; i < 2048; ++i) { 
-        printf("0x%04x, ", ((uint16_t*)read_buff)[i]);
-    }
-    printf("\n");
+    // for (size_t i = 0; i < 2048; ++i) { 
+    //     printf("0x%04x, ", ((uint16_t*)read_buff)[i]);
+    // }
+    // printf("\n");
 
     // std::copy(read_buff + 4, read_buff + 2048, read_buff);
-
-    // Wait until the flash read operation is complete
-    ARM_FLASH_STATUS flash_status;
-    do {
-        flash_status = ptrDrvFlash->GetStatus();
-        info("busy \n");
-    } while (flash_status.busy);
 
     std::vector<uint8_t> serializedData;
     serializedData.reserve(4096);  // Reserve space for 1024 uint16_t entries
