@@ -87,6 +87,9 @@ lv_style_t boxStyle;
 lv_color_t  lvgl_image[LIMAGE_Y][LIMAGE_X] __attribute__((section(".bss.lcd_image_buf")));                      // 192x192x2 = 73,728
 };
 
+static uint8_t black_image_data[LIMAGE_X * LIMAGE_Y * 3]
+    __attribute__((section(".bss.black_image")));
+
 using arm::app::Profiler;
 using arm::app::ApplicationContext;
 using arm::app::Model;
@@ -243,7 +246,7 @@ namespace app {
         // Retrieve the name 
         // auto& my_name = ctx.Get<std::string&>("my_name");
         auto my_name = ctx.Get<std::string>("my_name");
-        info("Person Name : %s \n", my_name.c_str());
+        // info("Person Name : %s \n", my_name.c_str());
 
         // Retrieve the cropped_images vector from the context
         auto croppedImages = ctx.Get<std::shared_ptr<std::vector<CroppedImageData>>>("cropped_images");
@@ -372,6 +375,15 @@ namespace app {
         return true;
     }
 
+    static void ReplaceImageWithBlack()
+    {
+        const uint8_t* ptr = black_image_data;
+        // Write the black buffer to the screen
+        write_to_lvgl_buf(LIMAGE_Y, LIMAGE_X, ptr, &lvgl_image[0][0]);
+        // Invalidate the image object to refresh the display
+        lv_obj_invalidate(ScreenLayoutImageObject());
+    }
+
 
 
     /**
@@ -424,6 +436,9 @@ namespace app {
         const int inputImgCols = inputShape->data[YoloFastestModel::ms_inputColsIdx];
         const int inputImgRows = inputShape->data[YoloFastestModel::ms_inputRowsIdx];
 
+        // printf("inputImgCols : %d\n", inputImgCols);
+        // printf("inputImgRows : %d\n", inputImgRows);
+
         /* Set up pre and post-processing. */
         DetectorPreProcess preProcess = DetectorPreProcess(inputTensor, true, model.IsDataSigned());
 
@@ -448,15 +463,9 @@ namespace app {
         {
             ScopedLVGLLock lv_lock;
 
-            /* Display this image on the LCD. */
             write_to_lvgl_buf(inputImgCols, inputImgRows,
                             currImage, &lvgl_image[0][0]);
             lv_obj_invalidate(ScreenLayoutImageObject());
-
-            // if (!run_requested()) {
-            //    lv_led_off(ScreenLayoutLEDObject());
-            //    return false;
-            // }
 
             lv_led_on(ScreenLayoutLEDObject());
 
@@ -576,19 +585,19 @@ namespace app {
 
         const uint32_t inputRowsSize = inputShape->data[Wav2LetterModel::ms_inputRowsIdx];
         const uint32_t inputInnerLen = inputRowsSize - (2 * inputCtxLen);
-        info(" inputRowsSize : %ld \n", inputRowsSize);
-        info(" inputInnerLen : %ld \n", inputInnerLen);
+        // info(" inputRowsSize : %ld \n", inputRowsSize);
+        // info(" inputInnerLen : %ld \n", inputInnerLen);
 
         /* Audio data stride corresponds to inputInnerLen feature vectors. */
         const uint32_t audioDataWindowLen = (inputRowsSize - 1) * mfccFrameStride + (mfccFrameLen);
         const uint32_t audioDataWindowStride = inputInnerLen * mfccFrameStride;
 
-        info(" audioDataWindowLen : %ld \n", audioDataWindowLen);
-        info(" audioDataWindowStride : %ld \n", audioDataWindowStride);
+        // info(" audioDataWindowLen : %ld \n", audioDataWindowLen);
+        // info(" audioDataWindowStride : %ld \n", audioDataWindowStride);
 
         /* NOTE: This is only used for time stamp calculation. */
         const float secondsPerSample = (1.0 / audio::Wav2LetterMFCC::ms_defaultSamplingFreq);
-        info(" secondsPerSample : %f \n", secondsPerSample);
+        // info(" secondsPerSample : %f \n", secondsPerSample);
 
         /* Set up pre and post-processing objects. */
         AsrPreProcess preProcess = AsrPreProcess(inputTensor,
@@ -609,7 +618,13 @@ namespace app {
 
         // Retrieve the audio_inf pointer from the context
         // auto audio_inf_vector = ctx.Get<std::vector<int16_t>>("audio_inf_vector");
-        // const int16_t* audio_inf = audio_inf_vector.data(); 
+        // // const int16_t* audio_inf = audio_inf_vector.data(); 
+
+        /* make screen black (better than sucked image) */
+        {
+            ScopedLVGLLock lv_lock;
+            ReplaceImageWithBlack();
+        }
 
         uint32_t audioArrSize = AUDIO_SAMPLES_KWS; // 16000 + 8000;
 

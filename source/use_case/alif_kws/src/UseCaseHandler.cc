@@ -40,7 +40,7 @@
 #include "KwsProcessing.hpp"
 #include "services_lib_api.h"
 #include "services_main.h"
-
+#include "delay.h"
 #include <vector>
 
 extern uint32_t m55_comms_handle;
@@ -122,6 +122,9 @@ static void send_name(arm::app::kws::KwsResult &result)
             strcpy(mhu_data.msg, classification.m_label.c_str());
             __DMB();
             SERVICES_send_msg(m55_comms_handle, &mhu_data);
+
+            // hal_audio_deinit();
+            // sleep_or_wait_msec(5000);
         }
         last_name = classification.m_label;
     }
@@ -243,19 +246,7 @@ static void send_name(arm::app::kws::KwsResult &result)
             // send_msg_if_needed(infResults.back());
             send_name(infResults.back());
 
-        
-
-#if VERIFY_TEST_OUTPUT
-            DumpTensor(outputTensor);
-#endif /* VERIFY_TEST_OUTPUT */
-
-            hal_lcd_clear(COLOR_BLACK);
-
-            // if (!PresentInferenceResult(infResults)) {
-            //     return false;
-            // }
-
-            // profiler.PrintProfilingResult();
+            // hal_lcd_clear(COLOR_BLACK);
 
             ++index;
         } while (!oneshot);

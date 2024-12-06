@@ -27,6 +27,8 @@
  */
 #define hal_audio_init(rate)          audio_init(rate)
 
+#define hal_audio_deinit()          audio_deinit()
+
 #define hal_set_audio_callback(cb)          audio_set_callback(cb)
 /**
  * @brief get audio data with Hal implementation.

@@ -72,7 +72,7 @@
 #include "Wav2LetterPostprocess.hpp"
 #include "Wav2LetterPreprocess.hpp"
 
-#define AUDIO_SAMPLES_KWS 32000 
+#define AUDIO_SAMPLES_KWS 48000 
 static int16_t audio_inf_kws[AUDIO_SAMPLES_KWS];
 
 #define MIMAGE_X 224

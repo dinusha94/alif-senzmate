@@ -22,6 +22,8 @@ typedef void (*audio_callback_t)(uint32_t data);
 
 int audio_init(int sampling_rate);
 
+int audio_deinit(void);
+
 /* Call is asynchronous - use wait call, audio_get_samples_received or callback to monitor progress. Data is not valid until preprocessing is run */
 int get_audio_data(int16_t *data, int len);
 

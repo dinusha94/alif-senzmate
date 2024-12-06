@@ -91,6 +91,11 @@ SECTIONS
     LONG ( LOADADDR(.data.sram0.at_mram) )
     LONG ( ADDR(.data.sram0.at_mram) )
     LONG ( SIZEOF(.data.sram0.at_mram)/4 )
+    /*
+    LONG ( LOADADDR(.data.sram1.at_mram) )
+    LONG ( ADDR(.data.sram1.at_mram) )
+    LONG ( SIZEOF(.data.sram1.at_mram)/4 )
+    */
     __copy_table_end__ = .;
   } > MRAM
 
@@ -145,6 +150,13 @@ SECTIONS
     * (ifm)
   } > SRAM0 AT> MRAM
 
+  /*
+    .data.sram1.at_mram : ALIGN(8)
+  {
+    * (.data.black_image)
+  } > SRAM1 AT> MRAM
+  */
+
   .bss.sram0 (NOLOAD) : ALIGN(8)
   {
     * (.bss.NoInit.activation_buf_sram) /* 4MB */
@@ -156,7 +168,8 @@ SECTIONS
     * (.bss.camera_frame_buf)              /* Camera Frame Buffer */
     * (.bss.camera_frame_bayer_to_rgb_buf) /* (Optional) Camera Frame Buffer for Bayer to RGB Convertion.*/
     * (.bss.lcd_image_buf)
-    * (.bss.black_image)
+    * (.bss.black_image) 
+
 
   } > SRAM1
   

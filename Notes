@@ -6,6 +6,10 @@ make ethos-u-alif_object_detection -j
 # HE
 cmake -DTARGET_PLATFORM=ensemble -DTARGET_SUBSYSTEM=RTSS-HE -DTARGET_BOARD=AppKit -DTARGET_REVISION=B -DCMAKE_TOOLCHAIN_FILE=scripts/cmake/toolchains/bare-metal-gcc.cmake -DUSE_CASE_BUILD=alif_kws -DGLCD_UI=NO -DLINKER_SCRIPT_NAME=ensemble-RTSS-HE-TCM -DCMAKE_BUILD_TYPE=Release -DLOG_LEVEL=LOG_LEVEL_DEBUG ..
 
+## use PDM mics when using kws mode in registration
+cmake -DTARGET_PLATFORM=ensemble -DTARGET_SUBSYSTEM=RTSS-HE -DTARGET_BOARD=AppKit -DTARGET_REVISION=B -DCMAKE_TOOLCHAIN_FILE=scripts/cmake/toolchains/bare-metal-gcc.cmake -DUSE_CASE_BUILD=alif_kws -DGLCD_UI=NO -DLINKER_SCRIPT_NAME=ensemble-RTSS-HE-TCM -DCMAKE_BUILD_TYPE=Release -DLOG_LEVEL=LOG_LEVEL_DEBUG -DTARGET_MICS=PDM ..
+
+
 #make
 make ethos-u-alif_kws -j
 

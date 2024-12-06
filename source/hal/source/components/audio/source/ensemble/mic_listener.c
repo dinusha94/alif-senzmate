@@ -118,6 +118,11 @@ int32_t disable_microphone()
         printf("I2S disable failed status = %" PRId32 "\n", status);
     }
 
+    status = i2s_drv->Uninitialize();
+    if (status != ARM_DRIVER_OK) {
+        printf("I2S uninitialize failed status = %" PRId32 "\n", status);
+    }
+
     return status;
 }
 

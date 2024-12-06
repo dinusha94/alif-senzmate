@@ -255,6 +255,12 @@ int audio_init(int sampling_rate)
     return err;
 }
 
+int audio_deinit(void)
+{
+    int32_t status = disable_microphone();
+    return status;
+}
+
 int get_audio_samples_received(void)
 {
     return audio_received;

@@ -68,15 +68,15 @@ namespace app {
 } /* namespace arm */
 
 // Global variable to hold the received message
-// const int MAX_MESSAGE_LENGTH = 256;
-// char receivedMessage[MAX_MESSAGE_LENGTH];
+const int MAX_MESSAGE_LENGTH = 8;
+char receivedMessage[MAX_MESSAGE_LENGTH];
 
 /* callback function to handle name strings received from speech recognition process*/
-// void user_message_callback(char *message) {
-//     strncpy(receivedMessage, message, MAX_MESSAGE_LENGTH - 1);
-//     receivedMessage[MAX_MESSAGE_LENGTH - 1] = '\0'; // Ensure null-termination
-//     info("Message received in user callback: %s\n", message);
-// }
+void user_message_callback(char *message) {
+    strncpy(receivedMessage, message, MAX_MESSAGE_LENGTH - 1);
+    receivedMessage[MAX_MESSAGE_LENGTH - 1] = '\0'; // Ensure null-termination
+    info("Message received in user callback: %s\n", message);
+}
 
 bool last_btn1 = false; 
 
@@ -105,7 +105,7 @@ bool run_requested_(void)
 void main_loop()
 {   
     /* Trigger when a name received from asr */
-    // init_trigger_tx_custom(user_message_callback);
+    init_trigger_tx_custom(user_message_callback);
 
     arm::app::YoloFastestModel det_model;  /* Model wrapper object. */
     arm::app::MobileNetModel recog_model;
@@ -200,23 +200,31 @@ void main_loop()
         alif::app::ObjectDetectionHandler(caseContext);
 
         // speech recognition method
-        // if (receivedMessage[0] != '\0') {
-        //     info("Name received: %s\n", receivedMessage);
-        //     myName = receivedMessage;
-        //     caseContext.Set<std::string&>("my_name", myName);
-        //     memset(receivedMessage, '\0', MAX_MESSAGE_LENGTH); // clear the massage buffer
-        // }
+        if (receivedMessage[0] != '\0') {
+            info("Key word spotted : %s\n", receivedMessage);
 
-        // button press mode    
-        if (run_requested_())
-        {   
+
+
+            
             myName = alif::app::ClassifyAudioHandler(
                                     caseContext,
                                     1,
                                     false);
                                     
             info("recognition Name : %s \n", myName.c_str());
+            memset(receivedMessage, '\0', MAX_MESSAGE_LENGTH); // clear the massage buffer
         }
+
+        // button press mode    
+        // if (run_requested_())
+        // {   
+        //     myName = alif::app::ClassifyAudioHandler(
+        //                             caseContext,
+        //                             1,
+        //                             false);
+                                    
+        //     info("recognition Name : %s \n", myName.c_str());
+        // }
 
 
         /* extract the facial embedding and register the person */
