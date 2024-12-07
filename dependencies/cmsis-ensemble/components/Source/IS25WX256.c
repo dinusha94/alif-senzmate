@@ -220,7 +220,6 @@ static int32_t ReadStatusReg (uint8_t command, uint8_t *stat)
         return ARM_DRIVER_ERROR;
     }
 
-
     while (!issi_event_flag)
     {
          __WFE();
@@ -397,7 +396,6 @@ static int32_t ARM_Flash_PowerControl (ARM_POWER_STATE state)
                 }
 
                 /* Prepare command and address for setting flash in octal mode */
-                uint32_t cmd[5];
                 cmd[0] = CMD_WRITE_VOL_CONFIG;
                 cmd[1] = (uint8_t)(IO_MODE_ADDRESS >> 16);
                 cmd[2] = (uint8_t)(IO_MODE_ADDRESS >> 8);
@@ -654,14 +652,12 @@ static int32_t ARM_Flash_ReadData (uint32_t addr, void *data, uint32_t cnt)
         cmd[1] = addr;
 
         status = ptrOSPI->Transfer(cmd, data_ptr, data_cnt);
-    
 
         if (status != ARM_DRIVER_OK)
         {
             return ARM_DRIVER_ERROR;
         }
 
-        
         while (!issi_event_flag)
         {
              __WFE();
@@ -673,7 +669,6 @@ static int32_t ARM_Flash_ReadData (uint32_t addr, void *data, uint32_t cnt)
             issi_event_flag = 0;
             return ARM_DRIVER_ERROR;
         }
-        
 
         issi_event_flag = 0;
 

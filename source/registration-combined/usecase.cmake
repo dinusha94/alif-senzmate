@@ -73,7 +73,7 @@ USER_OPTION(${use_case}_AUDIO_MIN_SAMPLES "Specify the minimum number of samples
     STRING)
 
 USER_OPTION(${use_case}_MODEL_SCORE_THRESHOLD "Specify the score threshold [0.0, 1.0) that must be applied to the inference results for a label to be deemed valid."
-    0.5
+    0.2
     STRING)
 
 # Generate labels file

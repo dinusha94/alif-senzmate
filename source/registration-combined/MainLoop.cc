@@ -105,7 +105,7 @@ bool run_requested_(void)
 void main_loop()
 {   
     /* Trigger when a name received from asr */
-    // init_trigger_tx_custom(user_message_callback);
+    init_trigger_tx_custom(user_message_callback);
 
     arm::app::YoloFastestModel det_model;  /* Model wrapper object. */
     arm::app::MobileNetModel recog_model;
@@ -199,28 +199,31 @@ void main_loop()
 
         alif::app::ObjectDetectionHandler(caseContext);
 
-        // speech recognition method
-        // if (receivedMessage[0] != '\0') {
-        //     info("Key word spotted : %s\n", receivedMessage);
-        //     myName = alif::app::ClassifyAudioHandler(
-        //                             caseContext,
-        //                             1,
-        //                             false);
-                                    
-        //     info("recognition Name : %s \n", myName.c_str());
-        //     memset(receivedMessage, '\0', MAX_MESSAGE_LENGTH); // clear the massage buffer
-        // }
+        // KWS mode
+        if (receivedMessage[0] != '\0') {
+            info("Key word spotted : %s\n", receivedMessage);
 
-        // button press mode    
-        if (run_requested_())
-        {   
+            // alif::app::SpeakName(1000);
+
             myName = alif::app::ClassifyAudioHandler(
                                     caseContext,
                                     1,
                                     false);
                                     
             info("recognition Name : %s \n", myName.c_str());
+            memset(receivedMessage, '\0', MAX_MESSAGE_LENGTH); // clear the massage buffer
         }
+
+        // Button press mode    
+        // if (run_requested_())
+        // {   
+        //     myName = alif::app::ClassifyAudioHandler(
+        //                             caseContext,
+        //                             1,
+        //                             false);
+                                    
+        //     info("recognition Name : %s \n", myName.c_str());
+        // }
 
 
         /* extract the facial embedding and register the person */
@@ -241,25 +244,19 @@ void main_loop()
                 faceEmbeddingCollection.CalculateAverageEmbeddingAndSave(myName);
                 info("Averaging finished and saved .. \n");
 
-                faceEmbeddingCollection.PrintEmbeddings();
+                // faceEmbeddingCollection.PrintEmbeddings();
 
                 /* save embedding data to external flash  */
                 ret = flash_send(faceEmbeddingCollection);
-                // ret = ospi_flash_read_collection(stored_collection);
+                ret = ospi_flash_read_collection(stored_collection);
                 // ret = read_collection_from_file(stored_collection);
                 // stored_collection.PrintEmbeddings();
 
-                info("aaaa  .. \n");
-
                 caseContext.Set<bool>("face_detected_flag", false); // Reset flag 
-
-                info("bbbbb  .. \n");
-
                 myName.clear();
-                info("ddddddd .. \n");
 
                 caseContext.Set<std::string>("my_name", myName);
-                info("ccccc .. \n");
+
             }
         }      
         

@@ -52,7 +52,7 @@
 #include <vector>
 #include <cstdint>
 #include <cstring>
-
+#include "delay.h"
 #include "lvgl.h"
 #include "lv_port.h"
 #include "lv_paint_utils.h"
@@ -382,9 +382,9 @@ namespace app {
         write_to_lvgl_buf(LIMAGE_Y, LIMAGE_X, ptr, &lvgl_image[0][0]);
         // Invalidate the image object to refresh the display
         lv_obj_invalidate(ScreenLayoutImageObject());
+        lv_label_set_text_static(ScreenLayoutHeaderObject(), "State you're Name");
+        sleep_or_wait_msec(10);
     }
-
-
 
     /**
      * @brief           Presents inference results along using the data presentation
@@ -498,6 +498,7 @@ namespace app {
                 return false;
             }
 
+            lv_label_set_text_fmt(ScreenLayoutHeaderObject(), "Face Detection");
             lv_label_set_text_fmt(ScreenLayoutLabelObject(0), "Faces Detected: %i", results.size());
 
             if (ctx.Get<bool>("face_detected_flag")) {
