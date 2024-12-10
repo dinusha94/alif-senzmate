@@ -61,7 +61,6 @@ FaceEmbeddingCollection Deserialize(const std::vector<uint8_t> &buffer) {
         // Deserialize the name
         uint32_t nameLength;
         std::memcpy(&nameLength, &buffer[offset], sizeof(nameLength));
-        // printf("offset: %zu, nameLength: %u, buffer size: %zu\n", offset, nameLength, buffer.size());
         offset += sizeof(nameLength);
         face.name = std::string(buffer.begin() + offset, buffer.begin() + offset + nameLength);
         offset += nameLength;
@@ -90,14 +89,14 @@ int32_t flash_send(const FaceEmbeddingCollection &data)
     uint16_t write_buff[2048] = {0};
     std::memcpy(write_buff, serializedData.data(), serializedData.size());
 
-    // printf("Write buf numPersons:\n");
-    // for (size_t i = 0; i < 2048; ++i) { 
-    //     printf("0x%04x, ", write_buff[i]);
-    // }
-    // printf("\n");
+    printf("Person registration data in bytes (Copy the whole array and past in the RegistrationData.hpp) :\n");
+    for (size_t i = 0; i < 2048; ++i) { 
+        printf("0x%04x, ", write_buff[i]);
+    }
+    printf("\n");
 
     // Write the serialized data to flash memory
-    ret = ptrDrvFlash->ProgramData(0xC105BC4F, write_buff, serializedData.size());
+    ret = ptrDrvFlash->ProgramData(0xC2000000, write_buff, serializedData.size());
 
     // Wait for flash operation to complete
     ARM_FLASH_STATUS flash_status;
@@ -114,7 +113,7 @@ int32_t ospi_flash_read_collection(FaceEmbeddingCollection &collection)
     int32_t ret;
     uint16_t read_buff[2048];
     // Perform the read operation from flash memory
-    ret = ptrDrvFlash->ReadData(0xC105BC4F, read_buff, 2048); 
+    ret = ptrDrvFlash->ReadData(0xC2000000, read_buff, 2048); 
 
     // Wait until the flash read operation is complete
     ARM_FLASH_STATUS flash_status;
@@ -156,11 +155,6 @@ int32_t read_collection_from_file(FaceEmbeddingCollection &collection)
     }
     
     read_buff = buffer; 
-
-    // for (size_t i = 0; i < 2048; ++i) { 
-    //     printf("0x%04x, ", ((uint16_t*)read_buff)[i]);
-    // }
-    // printf("\n");
 
     // std::copy(read_buff + 4, read_buff + 2048, read_buff);
 

@@ -87,6 +87,7 @@ lv_style_t boxStyle;
 lv_color_t  lvgl_image[LIMAGE_Y][LIMAGE_X] __attribute__((section(".bss.lcd_image_buf")));                      // 192x192x2 = 73,728
 };
 
+/* store the black image displayed after receiving initialing command from kws*/
 static uint8_t black_image_data[LIMAGE_X * LIMAGE_Y * 3]
     __attribute__((section(".bss.black_image")));
 
@@ -107,8 +108,6 @@ namespace app {
     using namespace arm::app::object_detection;
 
     }
-
-
 
     /* Print the output tensor from the model */
     void PrintTfLiteTensor(TfLiteTensor* tensor) {
@@ -147,23 +146,6 @@ namespace app {
             lv_obj_del(lv_obj_get_child(frame, 1));
             children--;
         }
-    }
-
-    void DisplayCroppedImage(const std::vector<uint8_t>& croppedImage, int width, int height) {
-        // Assuming lvgl_image is a 2D buffer that corresponds to your display dimensions
-        // You'll need to determine how to map the cropped image onto the lvgl_image buffer.
-
-        // If your lvgl_image buffer is a 2D array of the same size as the cropped image
-        // (e.g., using the height and width of the cropped image directly):
-        // uint8_t* lvglImageBuffer = &lvgl_image[0][0]; // Change this to point to the appropriate location
-
-        // Write the cropped image data to the LVGL buffer
-        write_to_lvgl_buf(width, height, croppedImage.data(),  &lvgl_image[0][0]);
-
-        // Invalidate the display object to redraw
-        lv_obj_invalidate(ScreenLayoutImageObject()); 
-
-        info("Cropped image displayed successfully.\n");
     }
 
 
@@ -244,7 +226,6 @@ namespace app {
         auto& model = ctx.Get<Model&>("recog_model");
 
         // Retrieve the name 
-        // auto& my_name = ctx.Get<std::string&>("my_name");
         auto my_name = ctx.Get<std::string>("my_name");
         // info("Person Name : %s \n", my_name.c_str());
 
@@ -375,6 +356,11 @@ namespace app {
         return true;
     }
 
+    /**
+     * @brief           Display black image when the kws send an command (later this will replaced with an Logo)
+     * @param[in]       None     
+     * @return          None
+     **/
     static void ReplaceImageWithBlack()
     {
         const uint8_t* ptr = black_image_data;
@@ -410,7 +396,6 @@ namespace app {
         auto& model = ctx.Get<Model&>("det_model");
 
         // Retrieve the name 
-        // auto& my_name = ctx.Get<std::string&>("my_name");
         auto my_name = ctx.Get<std::string>("my_name");
         // info("Person Name : %s \n", my_name.c_str());
 
@@ -435,9 +420,6 @@ namespace app {
 
         const int inputImgCols = inputShape->data[YoloFastestModel::ms_inputColsIdx];
         const int inputImgRows = inputShape->data[YoloFastestModel::ms_inputRowsIdx];
-
-        // printf("inputImgCols : %d\n", inputImgCols);
-        // printf("inputImgRows : %d\n", inputImgRows);
 
         /* Set up pre and post-processing. */
         DetectorPreProcess preProcess = DetectorPreProcess(inputTensor, true, model.IsDataSigned());
@@ -586,19 +568,13 @@ namespace app {
 
         const uint32_t inputRowsSize = inputShape->data[Wav2LetterModel::ms_inputRowsIdx];
         const uint32_t inputInnerLen = inputRowsSize - (2 * inputCtxLen);
-        // info(" inputRowsSize : %ld \n", inputRowsSize);
-        // info(" inputInnerLen : %ld \n", inputInnerLen);
 
         /* Audio data stride corresponds to inputInnerLen feature vectors. */
         const uint32_t audioDataWindowLen = (inputRowsSize - 1) * mfccFrameStride + (mfccFrameLen);
         const uint32_t audioDataWindowStride = inputInnerLen * mfccFrameStride;
 
-        // info(" audioDataWindowLen : %ld \n", audioDataWindowLen);
-        // info(" audioDataWindowStride : %ld \n", audioDataWindowStride);
-
         /* NOTE: This is only used for time stamp calculation. */
         const float secondsPerSample = (1.0 / audio::Wav2LetterMFCC::ms_defaultSamplingFreq);
-        // info(" secondsPerSample : %f \n", secondsPerSample);
 
         /* Set up pre and post-processing objects. */
         AsrPreProcess preProcess = AsrPreProcess(inputTensor,
@@ -627,7 +603,7 @@ namespace app {
             ReplaceImageWithBlack();
         }
 
-        uint32_t audioArrSize = AUDIO_SAMPLES_KWS; // 16000 + 8000;
+        uint32_t audioArrSize = AUDIO_SAMPLES_KWS;
 
         static bool audio_inited;
         std::string finalResultStr;
@@ -710,10 +686,6 @@ namespace app {
                     audioDataSlider.Index(),
                     scoreThreshold));
 
-// #if VERIFY_TEST_OUTPUT
-//                 armDumpTensor(outputTensor,
-//                               outputTensor->dims->data[Wav2LetterModel::ms_outputColsIdx]);
-// #endif        /* VERIFY_TEST_OUTPUT */
             } /* while (audioDataSlider.HasNext()) */
 
             ctx.Set<std::vector<asr::AsrResult>>("results", finalResults);
@@ -742,7 +714,6 @@ namespace app {
                 case 1:
                     info("Complete recognition: %s\n", finalResultStr.c_str());
                     // send_name(finalResultStr);
-                    // ctx.Set<std::string&>("my_name", finalResultStr);
                     ctx.Set<std::string>("my_name", finalResultStr);
 
                     break;

@@ -186,9 +186,8 @@ void main_loop()
     // flag to notify button press event
     caseContext.Set<bool>("buttonflag", false);
 
-    // Hardcoded name
+    // store name received from user
     std::string myName = "";
-    // caseContext.Set<std::string&>("my_name", myName);
     caseContext.Set<std::string>("my_name", "");
 
     bool avgEmbFlag = false;
@@ -202,9 +201,6 @@ void main_loop()
         // KWS mode
         if (receivedMessage[0] != '\0') {
             info("Key word spotted : %s\n", receivedMessage);
-
-            // alif::app::SpeakName(1000);
-
             myName = alif::app::ClassifyAudioHandler(
                                     caseContext,
                                     1,
@@ -248,7 +244,7 @@ void main_loop()
 
                 /* save embedding data to external flash  */
                 ret = flash_send(faceEmbeddingCollection);
-                ret = ospi_flash_read_collection(stored_collection);
+                // ret = ospi_flash_read_collection(stored_collection);
                 // ret = read_collection_from_file(stored_collection);
                 // stored_collection.PrintEmbeddings();
 

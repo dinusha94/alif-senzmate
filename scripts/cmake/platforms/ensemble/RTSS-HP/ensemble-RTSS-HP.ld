@@ -150,25 +150,20 @@ SECTIONS
     * (ifm)
   } > SRAM0 AT> MRAM
 
-  /*
-    .data.sram1.at_mram : ALIGN(8)
-  {
-    * (.data.black_image)
-  } > SRAM1 AT> MRAM
-  */
-
+/* Following changes are due to limitation that we cant run the ASR on the HE (may be changed in the future)*/ 
+/* SRAM0 is used to hold larger activation buffer for 3 models */
   .bss.sram0 (NOLOAD) : ALIGN(8)
   {
     * (.bss.NoInit.activation_buf_sram) /* 4MB */
   } > SRAM0
 
-  
+/* SRAM1 will hold the other buffers which were previously on the SRAM0 */
   .bss.sram1 (NOLOAD) : ALIGN(8)
   {
     * (.bss.camera_frame_buf)              /* Camera Frame Buffer */
     * (.bss.camera_frame_bayer_to_rgb_buf) /* (Optional) Camera Frame Buffer for Bayer to RGB Convertion.*/
     * (.bss.lcd_image_buf)
-    * (.bss.black_image) 
+    * (.bss.black_image)  /* buffer to hold back image (later this will be replaced with an Logo)*/
 
 
   } > SRAM1

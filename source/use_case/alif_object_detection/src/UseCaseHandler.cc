@@ -110,24 +110,6 @@ using namespace arm::app::object_detection;
         }
     }
 
-    void DisplayCroppedImage(const std::vector<uint8_t>& croppedImage, int width, int height) {
-        // Assuming lvgl_image is a 2D buffer that corresponds to your display dimensions
-        // You'll need to determine how to map the cropped image onto the lvgl_image buffer.
-
-        // If your lvgl_image buffer is a 2D array of the same size as the cropped image
-        // (e.g., using the height and width of the cropped image directly):
-        // uint8_t* lvglImageBuffer = &lvgl_image[0][0]; // Change this to point to the appropriate location
-
-        // Write the cropped image data to the LVGL buffer
-        write_to_lvgl_buf(width, height, croppedImage.data(),  &lvgl_image[0][0]);
-
-        // Invalidate the display object to redraw
-        lv_obj_invalidate(ScreenLayoutImageObject()); 
-
-        info("Cropped image displayed successfully.\n");
-    }
-
-
     // A helper function to crop the image based on the detection box.
     bool CropDetectedObject(const uint8_t* currImage, int inputImgCols, int inputImgRows, const object_detection::DetectionResult& result, uint8_t* croppedImage) {
         // Ensure the bounding box coordinates are within the image dimensions
@@ -396,7 +378,6 @@ using namespace arm::app::object_detection;
         }
 
         // Display and inference start
-
         {
             ScopedLVGLLock lv_lock;
 
@@ -413,10 +394,6 @@ using namespace arm::app::object_detection;
             lv_led_on(ScreenLayoutLEDObject());
 
             const size_t copySz = inputTensor->bytes;
-
-// #if SHOW_INF_TIME
-//         uint32_t inf_prof = Get_SysTick_Cycle_Count32();
-// #endif
 
             /* Run the pre-processing, inference and post-processing. */
             if (!preProcess.DoPreProcess(currImage, copySz)) {
@@ -436,19 +413,10 @@ using namespace arm::app::object_detection;
                 return false;
             }
 
-            // info("POSTPROCESSING DONE...........................");
-
             if (!ProcessDetectionsAndCrop(currImage, inputImgCols, inputImgRows, results, ctx)){
                 printf_err("Cropping failed.");
                 return false;
             }
-
-// #if SHOW_INF_TIME
-//             inf_prof = Get_SysTick_Cycle_Count32() - inf_prof;
-//             lv_label_set_text_fmt(ScreenLayoutLabelObject(2), "Inference time: %.3f ms", (double)inf_prof / SystemCoreClock * 1000);
-//             lv_label_set_text_fmt(ScreenLayoutLabelObject(3), "Inferences / sec: %.2f", (double) SystemCoreClock / inf_prof);
-//             //lv_label_set_text_fmt(ScreenLayoutLabelObject(3), "Inferences / second: %.2f", (double) SystemCoreClock / (inf_loop_time_end - inf_loop_time_start));
-// #endif
 
             lv_label_set_text_fmt(ScreenLayoutLabelObject(0), "Faces Detected: %i", results.size());
             auto whoAmI = ctx.Get<std::string>("person_id");  // retrieve the person ID
@@ -459,26 +427,8 @@ using namespace arm::app::object_detection;
 
         } // ScopedLVGLLock
 
-// #if VERIFY_TEST_OUTPUT
-//         DumpTensor(modelOutput0);
-//         DumpTensor(modelOutput1);
-// #endif /* VERIFY_TEST_OUTPUT */
-
-        // if (!PresentInferenceResult(results)) {
-        //     return false;
-        // }
-
-        // profiler.PrintProfilingResult();
-
         return true;
     }
-
-
-
-
-
-
-
 
     static bool PresentInferenceResult(const std::vector<object_detection::DetectionResult>& results)
     {
